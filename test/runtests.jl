@@ -1,0 +1,6 @@
+next_tradetime(DateTime("2018-01-01T8:50"), "JM")
+next_tradetime(DateTime("2018-01-01T8:50"), "000001")
+next_tradetime(DateTime("2018-01-01T12:00"), "000001")
+next_tradetime(DateTime("2018-01-01T13:15"), "JM")
+next_tradetime(DateTime("2018-01-01T13:15"), "000001")
+next_tradetime(DateTime("2018-01-01T15:15"), "000001")
