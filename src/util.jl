@@ -69,6 +69,11 @@ function isholiday(t)
     length(range) == 0
 end
 
+function mmap_tempname()
+    isdir(".mempool") || mkdir(".mempool")
+    file = joinpath(".mempool", randstring())
+end
+
 function mcopy(x::AbstractArray{T, N}) where {T, N}
     src = mmap_tempname()
     fid = open(src, "w+")
@@ -81,11 +86,23 @@ function mcopy(x::AbstractArray{T, N}) where {T, N}
 end
 
 mcopy(x::Series) = Series(mcopy(x.values), index = x.index, name = x.name)
+
 mcopy(x::DataFrame) = DataFrame(mcopy(x.values), index = x.index, columns = x.columns)
 
 part(df::DataFrame) = nprocs() > 1 ? part(df.iloc, dim = 1) : df
 
-function hdfconcat(dst, srcs; key = "df")
+lngstconsec(s) = (!s).cumsum()[s].value_counts().max()
+
+function reindex_columns(df, columns)
+    itrs = [df[c].sort_values().unique() for c in columns]
+    multidx = pd.MultiIndex.from_product(itrs, names = columns)
+    df.set_index(columns, inplace = true)
+    df = df.reindex(index = multidx)
+    df.reset_index(inplace = true)
+    return df
+end
+
+function concat_hdfs(dst, srcs; key = "df")
     store = pd.HDFStore(dst, "w")
     try
         for src in srcs
@@ -98,20 +115,9 @@ function hdfconcat(dst, srcs; key = "df")
     return dst
 end
 
-lngstconsec(s) = (!s).cumsum()[s].value_counts().max()
-
-function reindex_columns(df, cols)
-    itrs = [df[c].sort_values().unique() for c in cols]
-    multidx = pd.MultiIndex.from_product(itrs, names = cols)
-    df.set_index(cols, inplace = true)
-    df = df.reindex(index = multidx)
-    df.reset_index(inplace = true)
-    return df
-end
-
 hasheader(src) = length(collect(eachmatch(r"\d+\.\d+", readline(src)))) <= 2
 
-function txtconcat(dst, srcs)
+function concat_txts(dst, srcs)
     header = hasheader(srcs[1])
     open(dst, "w") do fid
         header && println(fid, readline(srcs[1]))
@@ -125,16 +131,14 @@ function txtconcat(dst, srcs)
     return dst
 end
 
-function catlag(df::DataFrame, gcol, maxlag = 10)
-    dfs = [df.groupby(gcol).shift(l) for l in 0:(maxlag - 1)]
-    cols = [string(c, '_', n) for n in 0:(maxlag - 1) for c in dfs[1].columns]
-    df = pd.concat(dfs, axis = 1).dropna()
+function catlag(df::DataFrame, by; maxlag = 10)
+    df = pd.concat([df.groupby(by).shift(l).dropna() for l in 0:(maxlag - 1)], axis = 1)
+    df.columns = [string(c, '_', l) for l in 0:(maxlag - 1) for c in df.columns]
     df.reset_index(inplace = true, drop = true)
-    df.columns = cols
     return df
 end
 
-function catlag(x, maxlag = 10)
+function catlag(x; maxlag = 10)
     F, N, T = size(x)
     x′ = fill!(similar(x, maxlag * F, N, T), 0)
     for t in 1:T, n in 1:N, f in 1:F
@@ -144,30 +148,6 @@ function catlag(x, maxlag = 10)
         end
     end
     return x′
-end
-
-downsample(df::PandasWrapped, freq::String) =
-    downsample(to_hdf5(df, "resample_pre.h5"), freq)
-
-function downsample(src::String, freq::String)
-    fmap = @static Sys.iswindows() ? map : pmap
-    @printf("downsampling %s...\n", src)
-    srcs = fmap(h5open(names, src)) do c
-        df = pd.read_hdf5(src, columns = [c, "日期"])
-        Δt = df["日期"].iloc[10] - df["日期"].iloc[9]
-        @printf("%s, freq %.1gS => %s\n", c, Δt, freq)
-        t = pd.date_range(start = "19700101", periods = length(df), freq = string(Δt, "S"))
-        df.set_index(t, inplace = true)
-        orient = c == "涨幅" ? "left" : "right"
-        r = df[[c]].resample(freq, label = orient, closed = orient)
-        aggf = c == "涨幅" ? "sum" : occursin(r"手续费|日期", c) ? "last" : "mean"
-        Sys.iswindows() && (c = randstring())
-        r.agg(aggf).to_hdf5("tmp/$c.h5")
-    end
-    df = read_hdf5(h5concat("resample.h5", srcs))
-    df["涨幅"].fillna(0, inplace = true)
-    @eval GC.gc(true)
-    return df
 end
 
 function read_hdf5(src; columns = nothing, mmaparrays = true)
@@ -195,3 +175,42 @@ function to_hdf5(df, dst)
     end
     return dst
 end
+
+to_dict(x) = Dict{Symbol, Any}(s => getfield(x, s) for s in fieldnames(typeof(x)))
+
+to_struct(::Type{T}, d) where T = T([d[s] for s in fieldnames(T)]...)
+
+divavg!(x) = (x ./= mean(x))
+
+function rollindices(ti, tf, Δtb, Δtf)
+    [(string(t - Δtb):string(t - Day(1)),
+    string(t):string(t + Δtf - Day(1)))
+    for t in (ti + Δtf):Δtf:tf]
+end
+
+function sortednunique(f, x)
+    n = 1
+    yl = f(x[1])
+    @inbounds for xi in x
+        yi = f(xi)
+        n = ifelse(yi != yl, n + 1, n)
+        yl = yi
+    end
+    return n
+end
+
+sortednunique(x) = sortednunique(identity, x)
+
+Mmap.sync!(m::AbstractArray) = isdefined(m, :parent) && Mmap.sync!(m.parent)
+
+parsefreq(freq) = freq
+
+function parsefreq(freq::String)
+    @eval let S = 1, T = 60, H = 60T, D = 24H, M = 30D, Y = 12M
+        $(Meta.parse(freq))
+    end
+end
+
+splat(list) = [item for sublist in list for item in (isa(sublist, AbstractArray) ? sublist : [sublist])]
+
+idxmap(x) = Dict(zip(z, axes(x, 1)))

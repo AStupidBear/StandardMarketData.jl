@@ -1,7 +1,7 @@
-function cluster(x, n; method = "mbkmns", njobs = 1)
+function cluster(x, n; method = "mbkmns", n_jobs = 1)
     if method == "kmns"
         @from dask_ml.cluster imports KMeans
-        model = KMeans(n_clusters = n, random_state = 0, n_jobs = njobs)
+        model = KMeans(n_clusters = n, random_state = 0, n_jobs = n_jobs)
     elseif method == "mbkmns"
         @from dask_ml.cluster imports PartialMiniBatchKMeans
         model = MiniBatchKMeans(n_clusters = n, random_state = 0)
@@ -30,11 +30,11 @@ function discretize(x, n; encode = "ordinal", strategy = "quantile")
     end
 end
 
-function reducedims(x, n; method = "tsne", nbr = 32, njobs = 1)
+function reducedims(x, n; method = "tsne", nbr = 32, n_jobs = 1)
     if method == "tsne"
         if sizeof(x) > 1024^3 || n != 2
             @from MulticoreTSNE imports MulticoreTSNE
-            model = MulticoreTSNE(n_components = n, random_state = 0, n_jobs = njobs)
+            model = MulticoreTSNE(n_components = n, random_state = 0, n_jobs = n_jobs)
         else
             @from tsnecuda imports TSNE
             model = TSNE(num_neighbors = nbr)
@@ -44,23 +44,23 @@ function reducedims(x, n; method = "tsne", nbr = 32, njobs = 1)
         model = PCA(n_components = n)
     elseif method == "kpca"
         @from sklearn.decomposition imports KernelPCA
-        model = KernelPCA(n_components = n, kernel = "rbf", random_state = 0, n_jobs = njobs)
+        model = KernelPCA(n_components = n, kernel = "rbf", random_state = 0, n_jobs = n_jobs)
     elseif method == "isomap"
         @from sklearn.manifold imports Isomap
-        model = Isomap(n_components = n, n_neighbors = nbr, n_jobs = njobs)
+        model = Isomap(n_components = n, n_neighbors = nbr, n_jobs = n_jobs)
     elseif method == "mds"
         @from sklearn.manifold imports MDS
-        model = MDS(n_components = n, random_state = 0, n_jobs = njobs)
+        model = MDS(n_components = n, random_state = 0, n_jobs = n_jobs)
     elseif method == "se"
         @from sklearn.manifold imports SpectralEmbedding
-        model = SpectralEmbedding(n_components = n, n_neighbors = nbr, random_state = 0, n_jobs = njobs)
+        model = SpectralEmbedding(n_components = n, n_neighbors = nbr, random_state = 0, n_jobs = n_jobs)
     elseif method[1:3] == "lle"
         @from sklearn.manifold imprts LocallyLinearEmbedding
         # lle_standard, lle_ltsa, lle_hessian, lle_modified
-        model = LocallyLinearEmbedding(n_components = 2, n_neighbors = nbr, method = method[5:end], random_state = 0, n_jobs = njobs)
+        model = LocallyLinearEmbedding(n_components = 2, n_neighbors = nbr, method = method[5:end], random_state = 0, n_jobs = n_jobs)
     end
-    y = Float32.(model.fit_transform(pymat(x)))
-    reshape(permutedims(y), size(y, 2), size(x)[2:end]...)
+    y = pycall(model.fit_transform, PyArray, pymat(x))
+    reshape(y, :, size(x)[2:end]...)
 end
 
 isbin(x) = !any(z -> z != 0 && z != 1, x)
@@ -270,7 +270,7 @@ function trans_cluster(df, nclus = 50)
     kmns = MiniBatchKMeans(n_clusters = nclus)
     enc = OneHotEncoder(sparse = false)
     labels = enc.fit_transform(reshape(kmns.fit_predict(df), :, 1))
-    inertia = rmul!(kmns.transform(df), 1 / sqrt(size(df, 2)))
+    inertia = kmns.transform(df) ./ sqrt(size(df, 2))
     df_labels = DataFrame(mcopy(labels), columns = ["cluster[$i]" for i in 1:nclus])
     df_inertia = DataFrame(mcopy(inertia), columns = ["inertia[$i]" for i in 1:nclus])
     pdhcat(df_labels, df_inertia)
@@ -294,7 +294,7 @@ function trans_dim(df, ncmpts = 100)
 end
 
 function afe(df; wins = [1])
-    df_meta, df_fea = split_metafea(df)
+    df_meta, df_fea = split_metafeat(df)
     df_id = DataFrame(Dict("id" => df_meta["股票代码"]))
     winsorize!(df_fea, "standard")
     df_ts = pdhcat(df_id, df_fea)

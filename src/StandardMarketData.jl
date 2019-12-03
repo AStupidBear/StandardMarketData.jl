@@ -2,28 +2,28 @@ __precompile__(true)
 
 module StandardMarketData
 
-using Printf, Dates, Distributed, Mmap
+using Printf, Dates, Distributed, Mmap, Statistics, Random
+using ProgressMeter, Parameters, Glob, PyCall, HDF5, BSON
+using BSONMmap, PandasLite, PyCallUtils, HDF5Utils
 using BlockArrays: _BlockArray
-using PyCall, PandasLite, PyCallUtils
-using PandasLite: StringRange, PandasWrapped
+using PandasLite: StringRange
 import StatsBase
-using ProgressMeter, Parameters
-
-export roll, @roll
 
 export Data, loaddata, savedata, reloaddata, initdata
-export nfeas, nstocks, nticks, ndays, nticksperday, period, isstocks
-export prune, rescale!, rescale, downsample, colnames
-export col, cols, @uncol, dropcols, keepcols, categories, keepcats
+export nfeats, ncodes, nticks, ndays, nticksperday, period
+export rescale!, rescale, downsample, featnames
+export column, columns, @uncol, dropcols, keepcols, categories, keepcats
 export datespan, firstdate, lastdate, getlabel, setcomm, setpool
-export epochsof, timesof, codesof, datesof, normalmask, parsefreq, concat, pivot
-export int2str, str2int, flt2str, str2flt, normalize_code
-export unix2date, unix2time, unix2str8, unix2str6, str2date, str2datetime, str2unix, unix2int, int2unix
-export to_df, to_data, metacols, feacols, split_metafea, lngstconsec
+export epochsof, datetimesof, codesof, datesof, parsefreq, concat, pivot
+export unix2date, unix2time, unix2str8, unix2str6, unix2int
+export str2date, str2datetime, str2unix, int2unix
+export roll, to_df, to_data, normalize_code, sortednunique
+
+export SMD
+const SMD = StandardMarketData
 
 include("data.jl")
 include("util.jl")
 include("feature.jl")
-include("string.jl")
 
 end
