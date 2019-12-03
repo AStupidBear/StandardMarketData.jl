@@ -12,12 +12,15 @@ import StatsBase
 export Data, loaddata, savedata, reloaddata, initdata
 export nfeats, ncodes, nticks, ndays, nticksperday, period
 export rescale!, rescale, downsample, featnames
-export column, columns, @uncol, dropcols, keepcols, categories, keepcats
+export column, columns, @uncol, dropfeats, keepfeats, categories, keepcats
 export datespan, firstdate, lastdate, getlabel, setcomm, setpool
-export epochsof, datetimesof, codesof, datesof, parsefreq, concat, pivot
+export epochsof, datetimesof, datesof, codesof, parsefreq
+export concat, pivot, roll, to_df, to_data
 export unix2date, unix2time, unix2str8, unix2str6, unix2int
 export str2date, str2datetime, str2unix, int2unix
-export roll, to_df, to_data, normalize_code, sortednunique
+export normalize_code, isfutcode, iscommcode, next_tradetime, isholiday
+export lngstconsec, reindex_columns, concat_hdfs, concat_txts, catlag
+export to_dict, to_struct, parsefreq, sortednunique, idxmap, ⧶
 
 export SMD
 const SMD = StandardMarketData

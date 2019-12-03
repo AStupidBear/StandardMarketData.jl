@@ -32,7 +32,7 @@ int2unix(i) = str2unix(string(i))
 isfutcode(code) = occursin(r"^\D+$", split(code, '.')[1])
 iscommcode(code) = isfutcode(code) && !occursin(r"IF|IH|IC", code)
 
-function next_tradetime(code, t)
+function next_tradetime(t, code)
     d, t = Date(t), Time(t)
     iscomm = iscommcode(code)
     if t < Time(9, 0) && iscomm
@@ -59,7 +59,7 @@ function isholiday(t)
     holidays = @staticvar DateTime[]
     if isempty(holidays)
         chinese_calendar = pyimport("chinese_calendar")
-        for day in keys(chinese_calendar[:holidays])
+        for day in keys(chinese_calendar.holidays)
             push!(holidays, day)
         end
     end
@@ -187,7 +187,7 @@ function rollindices(ti, tf, Δtb, Δtf)
     string(t):string(t + Δtf - Day(1)))
     for t in (ti + Δtf):Δtf:tf]
 end
-
+    
 function sortednunique(f, x)
     n = 1
     yl = f(x[1])
@@ -213,4 +213,8 @@ end
 
 splat(list) = [item for sublist in list for item in (isa(sublist, AbstractArray) ? sublist : [sublist])]
 
-idxmap(x) = Dict(zip(z, axes(x, 1)))
+idxmap(x) = Dict(zip(x, axes(x, 1)))
+
+⧶(x, y) = x / y
+⧶(x, y::AbstractFloat) = x / (y + eps(y))
+⧶(x, y::Integer) = ifelse(x == y == 0, zero(x), x / y)

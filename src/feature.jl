@@ -166,7 +166,7 @@ function _trans_ts_(slc, col, win, tscal)
         for (n, dfn) in df_slc.groupby("id")
             dfn.drop(inplace = true, columns = "id")
             df_roll = dfn.rolling(win).agg(aggfuns)
-            df_roll.columns = [join(c, '_') for c in df_roll.columns()]
+            df_roll.columns = [join(c, '_') for c in df_roll.columns]
             for c in dfn.columns
                 df_roll["Δ$c"] = dfn[c].diff(win)
             end

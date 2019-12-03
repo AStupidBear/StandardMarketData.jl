@@ -1,22 +1,21 @@
-mutable struct Data{A <: AbstractMatrix{Float32},
-                    B <: AbstractMatrix{Float32},
+mutable struct Data{F <: AbstractArray{Float32, 3},
+                    R <: AbstractMatrix{Float32},
                     C <: AbstractMatrix{Float32},
-                    D <: AbstractMatrix{Float64},
-                    E <: AbstractArray{Float32, 3},
-                    F <: AbstractMatrix{Float32},
-                    G <: AbstractMatrix{Float32},
-                    H <: AbstractMatrix{Float32}}
+                    L <: AbstractMatrix{Float32},
+                    CO <: AbstractMatrix{MLString{8}},
+                    T <: AbstractMatrix{Float64},
+                    P <: AbstractMatrix{Float32}}
     特征名::Dict{String, Int}
-    特征::A
-    涨幅::B
+    特征::F
+    涨幅::R
     买手续费率::C
     卖手续费率::C
-    涨停::D
-    跌停::D
-    代码::E
-    时间戳::F
-    价格::G
-    交易池::H
+    涨停::L
+    跌停::L
+    代码::CO
+    时间戳::T
+    价格::P
+    交易池::P
 end
 
 afieldnames(t) = Symbol[fieldname(t, n) for n in 1:fieldcount(t) if fieldtype(t, n) <: AbstractArray]
@@ -51,9 +50,9 @@ Base.vec(data::Data) = reshape(data, 1, length(data))
 
 nfeats(data) = size(data.特征, 1)
 
-ncodes(data) = size(data.涨幅, 2)
+ncodes(data) = size(data.涨幅, 1)
 
-nticks(data) = size(data.涨幅, 3)
+nticks(data) = size(data.涨幅, 2)
 
 Base.size(data::Data) = size(data.涨幅)
 
@@ -125,13 +124,16 @@ function reloaddata(data)
     loaddata(dst, mode = "r+")
 end
 
-function initdata(dst, F, N, T; columns = [])
+function initdata(dst, F, N, T; feature = nothing)
     isfile(dst) && rm(dst)
+    feature = something(feature, string.(1:F))
     h5open(dst, "w") do fid
         g_create(fid, "nonarray")
         @showprogress "initdata..." for s in afieldnames(Data)
             if s == :时间戳
                 d_zeros(fid, string(s), Float64, N, T)
+            elseif s == :代码
+                d_zeros(fid, string(s), MLString{8}, N, T)
             elseif s == :特征
                 d_zeros(fid, string(s), Float32, F, N, T)
             else
@@ -140,8 +142,8 @@ function initdata(dst, F, N, T; columns = [])
         end
         fid["代码"][:, :] .= MLString{8}.(string.(1:N))
         fid["交易池"][:, :] .= 1
-        if !isempty(columns)
-            特征名 = Dict(reverse(p) for p in enumerate(columns))
+        if !isempty(feature)
+            特征名 = Dict(reverse(p) for p in enumerate(feature))
             write_nonarray(fid, "特征名", 特征名)
         end
     end
@@ -245,10 +247,12 @@ function rescale(h5)
     rescale!(h5′)
 end
 
-period(data) = nticks(data) > 1 ? median(diff(view(data.日期, 1, :))) : 1
+_diff(x) = length(x) > 1 ? diff(x) : [zero(eltype(x))]
+
+period(data) = median(_diff(view(data.时间戳, 1, :)))
 
 downsample(data::Data, freq::String; ka...) =
-    downsample(data, round(Int, parsefreq(freq) / period(data)); ka...)
+    downsample(data, round(Int, min(nticks(data), parsefreq(freq) / period(data))); ka...)
 
 function downsample(data::Data, freq::Int; phase = 1, ka...)
     freq <= 1 && return data[:, :]
@@ -278,7 +282,7 @@ function downsample(data::Data, ts::AbstractArray{Int}; average = false)
     return data′
 end
 
-function column(data::Data, c; denorm = true, errors = "raise")
+function getfeat(data::Data, c; denorm = true, errors = "raise")
     if c in keys(data.特征名)
         f = data.特征名[c]
         x = @view data.特征[f, :, :]
@@ -296,33 +300,33 @@ function column(data::Data, c; denorm = true, errors = "raise")
     end
 end
 
-function column(data::Data, r::Regex; ka...)
-    cs = columns(data, r; ka...)
+function getfeat(data::Data, r::Regex; ka...)
+    cs = getfeats(data, r; ka...)
     !isempty(cs) && return cs[1]
-    column(data, string(r); ka...)
+    getfeat(data, string(r); ka...)
 end
 
-columns(data::Data, cs; ka...) = [column(data, c; ka...) for c in cs]
+getfeats(data::Data, cs; ka...) = [getfeat(data, c; ka...) for c in cs]
 
-columns(data::Data, r::Regex; ka...) = columns(data, filter(c -> occursin(r, c), featnames(data)); ka...)
+getfeats(data::Data, r::Regex; ka...) = getfeats(data, filter(c -> occursin(r, c), featnames(data)); ka...)
 
-function dropcols(data, cs::AbstractArray{Int})
+function dropfeats(data, cs::AbstractArray{Int})
     isempty(cs) && return data
     dict = to_dict(data)
     fs = setdiff(1:nfeats(data), cs)
-    dict["特征名"] = idxmap(featnames(data)[fs])
-    dict["特征"] = view(data.特征, fs, :, :)
-    to_struct(dict, Data)
+    dict[:特征名] = idxmap(featnames(data)[fs])
+    dict[:特征] = view(data.特征, fs, :, :)
+    to_struct(Data, dict)
 end
 
-dropcols(data, cs::Array{<:AbstractString}) = dropcols(data, [get(data.特征名, c, -1) for c in cs])
-dropcols(data, r::Regex) = dropcols(data, filter(c -> occursin(r, c), featnames(data)))
-keepcols(data, cs::AbstractArray{Int}) = dropcols(data, setdiff(1:nfeats(data), cs))
-keepcols(data, cs::Array{<:AbstractString}) = dropcols(data, setdiff(featnames(data), cs))
-keepcols(data, r::Regex) = keepcols(data, filter(c -> occursin(r, c), featnames(data)))
+dropfeats(data, cs::Array{<:AbstractString}) = dropfeats(data, [get(data.特征名, c, -1) for c in cs])
+dropfeats(data, r::Regex) = dropfeats(data, filter(c -> occursin(r, c), featnames(data)))
+keepfeats(data, cs::AbstractArray{Int}) = dropfeats(data, setdiff(1:nfeats(data), cs))
+keepfeats(data, cs::Array{<:AbstractString}) = dropfeats(data, setdiff(featnames(data), cs))
+keepfeats(data, r::Regex) = keepfeats(data, filter(c -> occursin(r, c), featnames(data)))
 
 categories(data) = filter(!isempty, unique(String.(first.(split.(featnames(data), ':')))))
-keepcats(data, cats) = keepcols(data, filter(c -> any(cat -> startswith(c, cat) || !occursin(':', c), splat(cats)), featnames(data)))
+keepcats(data, cats) = keepfeats(data, filter(c -> any(cat -> startswith(c, cat) || !occursin(':', c), splat(cats)), featnames(data)))
 dropcats(data, cats) = keepcats(data, setdiff(categories(data), splat(cats)))
 dropcats(data, r::Regex) = dropcats(data, filter(c -> occursin(r, c), categories(data)))
 keepcats(data, r::Regex) = keepcats(data, filter(c -> occursin(r, c), categories(data)))
@@ -330,7 +334,7 @@ keepcats(data, r::Regex) = keepcats(data, filter(c -> occursin(r, c), categories
 macro uncol(ex)
     cs, rhs = ex.args
     d, cs = gensym(), isa(cs, Symbol) ? [cs] : cs.args
-    kd = [:($c = $column($d, $(string(c)))) for c in cs]
+    kd = [:($c = $getfeat($d, $(string(c)))) for c in cs]
     Expr(:block, :($d = $rhs), kd..., d) |> esc
 end
 
@@ -347,7 +351,7 @@ firstdate(data::Data) = unix2date(minimum(data.时间戳))
 
 lastdate(data::Data) = unix2date(maximum(data.时间戳))
 
-getlabel(data::Data, h::String) = getlabel(data, ceil(Int, parsefreq(h) / period(data)))
+getlabel(data::Data, h::String) = getlabel(data, ceil(Int, min(nticks(data), parsefreq(h) / period(data))))
 
 function getlabel(data::Data, h::Int)
     h > nticks(data) && return data.涨幅
@@ -385,7 +389,7 @@ function setpool(data, pool)
     return data′
 end
 
-setpool(data, c::Union{String, Regex}) = setpool(data, column(data, c))
+setpool(data, c::Union{String, Regex}) = setpool(data, getfeat(data, c))
 
 function Base.repeat(data::Data, n)
     n == 1 && return data
