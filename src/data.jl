@@ -18,6 +18,8 @@ mutable struct Data{F <: AbstractArray{Float32, 3},
     交易池::P
 end
 
+Base.:(==)(x::Data, y::Data) = all(s -> getfield(x, s) == getfield(y, s), fieldnames(Data))
+
 afieldnames(t) = Symbol[fieldname(t, n) for n in 1:fieldcount(t) if fieldtype(t, n) <: AbstractArray]
 
 featnames(data) = first.(sort(collect(data.特征名), by = last))
@@ -133,14 +135,13 @@ function initdata(dst, F, N, T; feature = nothing)
             if s == :时间戳
                 d_zeros(fid, string(s), Float64, N, T)
             elseif s == :代码
-                d_zeros(fid, string(s), MLString{8}, N, T)
+                fid["代码"] = [MLString{8}(string(n)) for n in 1:N, t in 1:T]
             elseif s == :特征
                 d_zeros(fid, string(s), Float32, F, N, T)
             else
                 d_zeros(fid, string(s), Float32, N, T)
             end
         end
-        fid["代码"][:, :] .= MLString{8}.(string.(1:N))
         fid["交易池"][:, :] .= 1
         if !isempty(feature)
             特征名 = Dict(reverse(p) for p in enumerate(feature))
@@ -239,12 +240,14 @@ function rescale!(srcs; fillnan = true, ignored_columns = [])
         Mmap.sync!(data.特征)
         h5write(src, "归一系数", nrmcoef)
     end
+    return srcs
 end
 
 function rescale(h5)
     h5′ = replace(h5, ".h5" => "_NRM.h5")
     run(`cp $h5 $h5′`)
     rescale!(h5′)
+    return h5
 end
 
 _diff(x) = length(x) > 1 ? diff(x) : [zero(eltype(x))]
@@ -325,11 +328,11 @@ keepfeats(data, cs::AbstractArray{Int}) = dropfeats(data, setdiff(1:nfeats(data)
 keepfeats(data, cs::Array{<:AbstractString}) = dropfeats(data, setdiff(featnames(data), cs))
 keepfeats(data, r::Regex) = keepfeats(data, filter(c -> occursin(r, c), featnames(data)))
 
-categories(data) = filter(!isempty, unique(String.(first.(split.(featnames(data), ':')))))
+getcats(data) = filter(!isempty, unique(String.(first.(split.(featnames(data), ':')))))
 keepcats(data, cats) = keepfeats(data, filter(c -> any(cat -> startswith(c, cat) || !occursin(':', c), splat(cats)), featnames(data)))
-dropcats(data, cats) = keepcats(data, setdiff(categories(data), splat(cats)))
-dropcats(data, r::Regex) = dropcats(data, filter(c -> occursin(r, c), categories(data)))
-keepcats(data, r::Regex) = keepcats(data, filter(c -> occursin(r, c), categories(data)))
+dropcats(data, cats) = keepcats(data, setdiff(getcats(data), splat(cats)))
+dropcats(data, r::Regex) = dropcats(data, filter(c -> occursin(r, c), getcats(data)))
+keepcats(data, r::Regex) = keepcats(data, filter(c -> occursin(r, c), getcats(data)))
 
 macro uncol(ex)
     cs, rhs = ex.args
@@ -354,22 +357,20 @@ lastdate(data::Data) = unix2date(maximum(data.时间戳))
 getlabel(data::Data, h::String) = getlabel(data, ceil(Int, min(nticks(data), parsefreq(h) / period(data))))
 
 function getlabel(data::Data, h::Int)
-    h > nticks(data) && return data.涨幅
     @unpack 涨幅, 代码 = data
+    h > nticks(data) && return 涨幅
     N, T = size(data)
     l = zeros(Float32, N, T)
     r = zeros(Float32, N)
     for t in T:-1:(T - h + 1), n in 1:N
         r[n] += 涨幅[n, t]
-        l[n, t] = r[n] / (T - t + 1)
-    end
-    @showprogress "getlabel..." for t in (T - h):-1:1, n in 1:N
-        if 代码[n, t] != 代码[n, t + 1]
-            r[n] = 涨幅[n, t]
-        else
-            r[n] += 涨幅[n, t] - 涨幅[n, t + h]
-        end
         l[n, t] = r[n] / h
+    end
+    @showprogress "getlabel..." for t in (T - h):-1:1
+        for n in 1:N
+            r[n] += 涨幅[n, t] - 涨幅[n, t + h]
+            l[n, t] = r[n] / h
+        end
     end
     return l
 end
@@ -438,17 +439,15 @@ Base.isempty(data::Data) = length(data) == 0
 pivot(datas::AbstractArray{<:Data}) = concat(map(vec, datas), -1)
 
 function pivot(data::Data; dst = "pivot.h5")
-    data = vec(data)
-    @unpack 代码, 时间戳 = data
-    codes = sort(unique(代码))
-    dates = sort(unique(时间戳))
-    multidx = pd.MultiIndex.from_product((dates, codes))
-    df = DataFrame("code" => vec(代码), "date" => vec(时间戳))
-    df = df.reset_index().set_index(["date", "code"]).reindex(multidx)
+    ncodes(data) > 1 && (data = vec(data))
+    dates, codes = epochsof(data), codesof(data)
+    multidx = pd.MultiIndex.from_product((dates, to_category(codes)));
+    df = to_df(data, meta_only = true, columns = ["时间戳", "代码"])
+    df = df.reset_index().set_index(["时间戳", "代码"]).reindex(multidx);
     df["index"] = df["index"].fillna(-1).astype("int") + 1
     F, N, T = nfeats(data), length(codes), length(dates)
     index = reshape(df["index"].values, N, T)
-    initdata(dst, F, N, T, columns = featnames(data))
+    initdata(dst, F, N, T, feature = featnames(data))
     data′ = loaddata(dst, mode = "r+")
     fill!(data′.涨停, 1)
     fill!(data′.跌停, 1)
@@ -517,18 +516,25 @@ function roll(data, rolltrn, rolltst)
     @views ((data[:, t1], data[:, t2]) for (t1, t2) in inds)
 end
 
-function to_df(data::Data; meta_only = false, mmaparrays = false)
-    fcopy = mmaparrays ? mcopy : identity
-    df_meta = DataFrame()
+function to_df(data::Data; columns = nothing, meta_only = false, cnvtdate = false)
+    df = DataFrame()
     @showprogress "to_df..." for s in afieldnames(Data)
-        s == :特征 && continue
         x = vec(getfield(data, s))
-        df_meta[s] = vec(getfield(data, s))
+        !isnothing(columns) && string(s) ∉ columns && continue
+        if s == :代码
+            df[s] = to_category(x)
+        elseif s == :时间戳
+            df[s] = x
+            if cnvtdate
+                df[s] = df[s].mul(1e9).astype("datetime64[ns]")
+            end
+        elseif s == :特征 && !meta_only
+            df = pdhcat(df, pd.DataFrame(pymat(data.特征), columns = featnames(data)))
+        else
+            df[s] = x
+        end
     end
-    df_meta["时间戳"] = df_meta["时间戳"].mul(1e9).astype("datetime64[ns]")
-    meta_only && return df_meta
-    df_fea = pd.DataFrame(pymat(data.特征), columns = featnames(data))
-    return pdhcat(df_meta, df_fea)
+    return df
 end
 
 function to_data(df, dst)
@@ -552,10 +558,7 @@ function _to_data(df, dst)
             if c == "时间戳"
                 x = df[c].astype("int").div(1e9).values
             elseif c == "代码"
-                dfc = df[c].astype("category")
-                categories = Array(dfc.cat.categories)
-                codes = (dfc.cat.codes + 1).values
-                x = MLString{8}[categories[i] for i in codes]
+                x = from_category(df[c])
             else
                 x = df[c].values
             end
