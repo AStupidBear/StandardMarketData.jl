@@ -491,6 +491,8 @@ function pivot(data::Data; dst = "pivot.h5")
             end
         end
     end
+    @. data′.跌停 = ifelse(isone(data′.交易池), data′.跌停, 0f0)
+    @. data′.涨停 = ifelse(isone(data′.交易池), data′.涨停, 0f0)
     return data′, index
 end
 
