@@ -1,10 +1,11 @@
-mutable struct Data{F <: AbstractArray{Float32, 3},
-                    R <: AbstractMatrix{Float32},
-                    C <: AbstractMatrix{Float32},
-                    L <: AbstractMatrix{Float32},
-                    CO <: AbstractMatrix{MLString{8}},
-                    T <: AbstractMatrix{Float64},
-                    P <: AbstractMatrix{Float32}}
+mutable struct Data{F <: AbstractArray,
+                    R <: AbstractMatrix,
+                    C <: AbstractMatrix,
+                    L <: AbstractMatrix,
+                    C′ <: AbstractMatrix,
+                    T <: AbstractMatrix,
+                    P <: AbstractMatrix,
+                    P′ <: AbstractMatrix}
     特征名::Dict{String, Int}
     特征::F
     涨幅::R
@@ -12,10 +13,10 @@ mutable struct Data{F <: AbstractArray{Float32, 3},
     卖手续费率::C
     涨停::L
     跌停::L
-    代码::CO
+    代码::C′
     时间戳::T
     价格::P
-    交易池::P
+    交易池::P′
 end
 
 Base.:(==)(x::Data, y::Data) = all(s -> getfield(x, s) == getfield(y, s), fieldnames(Data))
@@ -144,6 +145,8 @@ function initdata(dst, F, N, T; feature = nothing)
                 d_zeros(fid, string(s), Float64, N, T)
             elseif s == :代码
                 fid["代码"] = [MLString{8}(string(n)) for n in 1:N, t in 1:T]
+            elseif s == :涨停 || s == :涨停 || s == :交易池
+                d_zeros(fid, string(s), UInt8, N, T)
             elseif s == :特征
                 d_zeros(fid, string(s), Float32, F, N, T)
             else
@@ -252,7 +255,7 @@ function rescale!(srcs; fillnan = true, ignored_columns = [])
 end
 
 function rescale(h5)
-    h5′ = replace(h5, ".h5" => "_NRM.h5")
+    h5′ = replace(h5, ".h5" => "_norm.h5")
     run(`cp $h5 $h5′`)
     rescale!(h5′)
     return h5
