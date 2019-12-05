@@ -26,21 +26,29 @@ featnames(data) = first.(sort(collect(data.特征名), by = last))
 
 mapdata(f, data) = Data(data.特征名, [f(getfield(data, s)) for s in afieldnames(Data)]...)
 
-time_mask(data, rng) = str2unix(rng.start) .<= data.时间戳[1, :] .<= str2unix(rng.stop)
+for f in [:getindex, :view]
+    @eval Base.$f(data::Data, is...) = mapdata(data) do x
+        ndims(x) == 2 ? $f(x, is...) : $f(x, :, is...)
+    end
 
-Base.getindex(data::Data, is...) = mapdata(data) do x
-    ndims(x) == 2 ? x[is...] : x[:, is...]
+    @eval function Base.$f(data::Data, ts::StringRange)
+        ti = str2unix(ts.start)
+        tf = str2unix(ts.stop)
+        mask = ti .<= data.时间戳 .<= tf
+        ns = findall(dropdims(any, mask, dims = 2))
+        ts = findall(dropdims(any, mask, dims = 1))
+        $f(data, arr2rng(ns), arr2rng(ts))
+    end
+
+    @eval function Base.$f(data::Data, code::String)
+        code = MLString{8}(code)
+        isequal(x, y) = x.data == y.data
+        mask = @. isequal(data.代码, code)
+        ns = findall(vec(any(mask, dims = 2)))
+        ts = findall(vec(any(mask, dims = 1)))
+        $f(data, arr2rng(ns), arr2rng(ts))
+    end
 end
-
-Base.getindex(data::Data, i1, i2::StringRange) = data[i1, time_mask(data, i2)]
-
-Base.getindex(data::Data, code::String) = data[:, vec(data.代码) .== code]
-
-Base.view(data::Data, is...) = mapdata(data) do x
-    ndims(x) == 2 ? view(x, is...) : view(x, :, is...)
-end
-
-Base.view(data::Data, i1, i2::StringRange) = view(data, i1, time_mask(data, i2))
 
 Base.maybeview(data::Data, is...) = view(data, is...)
 
@@ -341,12 +349,7 @@ macro uncol(ex)
     Expr(:block, :($d = $rhs), kd..., d) |> esc
 end
 
-Base.split(data::Data, t::String) = split(data, str2unix(t))
-
-function Base.split(data::Data, t)
-    t = findfirst(x -> t <= x, data.时间戳[1, :])
-    @views data[:, 1:(t - 1)], data[:, t:end]
-end
+Base.split(data::Data, t::String) = @views data["20010101":t], data[t:"30000101"]
 
 datespan(data::Data) = unix2date.(extrema(data.时间戳))
 

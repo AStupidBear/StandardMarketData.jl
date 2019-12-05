@@ -231,3 +231,26 @@ function to_category(x)
     sr.cat.categories = sr.cat.categories.astype("str")
     return sr
 end
+
+
+@generated function subslice(x::AbstractArray{T, N}) where {T, N}
+    inds = ntuple(i -> (:), N - 1)
+    :($inds)
+end
+
+subslice(x) = ntuple(i -> (:), ndims(x) - 1)
+
+cview(a, i) = view(a, subslice(a)..., i)
+
+ccount(a) = (ndims(a) == 1 ? length(a) : size(a, ndims(a)))
+
+function Base.split(x::AbstractArray, n)
+    cview(x, 1:n), cview(x, (n + 1):ccount(x))
+end
+
+Base.dropdims(f, A::AbstractArray; dims) = dropdims(f(A, dims = dims), dims = dims)
+
+function arr2rng(x)
+    r = UnitRange(extrema(x)...)
+    r == x ? r : x
+end

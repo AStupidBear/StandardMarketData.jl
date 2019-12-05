@@ -36,6 +36,10 @@ rescale!("test.h5")
 @test period(data) == Second(Δt).value
 @test length(featnames(data)) == F
 
+@test ncodes(data["1"]) == 1
+data["20190101":"20190103"]
+split(data, "20190110")
+
 @uncol f1, f2 = data
 @test isapprox(getfeat(data, r"f1$"), 特征[1, :, :])
 @test getfeats(data, r"f1$") == [特征[1, :, :]]
