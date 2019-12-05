@@ -20,6 +20,26 @@ ProgressMeter = "92933f4c-e287-5a05-a399-4b506db050ca"
 PyCall = "438e738f-606a-5dbb-bf0a-cddfbfd45ab0"
 PyCallUtils = "02651160-e6c3-11e9-0e2a-551f75d9519e"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
-Revise = "295af30f-e4ad-537b-8983-00126c2a3abe"
 Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
+
+[compat]
+BSON = "0.2"
+BSONMmap = "0.2"
+BlockArrays = "0.10"
+Glob = "1.2"
+HDF5 = "0.12"
+HDF5Utils = "0.1"
+PandasLite = "0.1"
+Parameters = "0.12"
+ProgressMeter = "1"
+PyCall = "1.90"
+PyCallUtils = "0.2"
+StatsBase = "0.32"
+julia = "1"
+
+[extras]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Test"]
