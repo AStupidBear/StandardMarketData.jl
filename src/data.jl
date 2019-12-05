@@ -138,14 +138,14 @@ end
 function initdata(dst, F, N, T; feature = nothing)
     isfile(dst) && rm(dst)
     feature = something(feature, string.(1:F))
-    h5open(dst, "w") do fid
+    h5open(dst, "w", "alignment", (0, 8)) do fid
         g_create(fid, "nonarray")
         @showprogress "initdata..." for s in afieldnames(Data)
             if s == :时间戳
                 d_zeros(fid, string(s), Float64, N, T)
             elseif s == :代码
                 fid["代码"] = [MLString{8}(string(n)) for n in 1:N, t in 1:T]
-            elseif s == :涨停 || s == :涨停 || s == :交易池
+            elseif s == :涨停 || s == :跌停 || s == :交易池
                 d_zeros(fid, string(s), UInt8, N, T)
             elseif s == :特征
                 d_zeros(fid, string(s), Float32, F, N, T)
@@ -453,6 +453,7 @@ function pivot(data::Data; dst = "pivot.h5")
     df["index"] = df["index"].fillna(-1).astype("int") + 1
     F, N, T = nfeats(data), length(codes), length(dates)
     index = reshape(df["index"].values, N, T)
+    @show F, N, T
     initdata(dst, F, N, T, feature = featnames(data))
     data′ = loaddata(dst, mode = "r+")
     fill!(data′.涨停, 1)
