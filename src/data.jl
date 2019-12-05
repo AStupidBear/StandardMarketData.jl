@@ -453,7 +453,6 @@ function pivot(data::Data; dst = "pivot.h5")
     df["index"] = df["index"].fillna(-1).astype("int") + 1
     F, N, T = nfeats(data), length(codes), length(dates)
     index = reshape(df["index"].values, N, T)
-    @show F, N, T
     initdata(dst, F, N, T, feature = featnames(data))
     data′ = loaddata(dst, mode = "r+")
     fill!(data′.涨停, 1)
