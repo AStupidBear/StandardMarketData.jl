@@ -15,7 +15,7 @@ export rescale!, rescale, downsample, featnames
 export getfeat, getfeats, @uncol, dropfeats, keepfeats, getcats, keepcats
 export datespan, firstdate, lastdate, getlabel, setcomm, setpool
 export epochsof, datetimesof, datesof, codesof, parsefreq
-export concat, pivot, roll, to_df, to_data
+export concat, pivot, roll, to_df, to_data, sourceof
 export unix2date, unix2time, unix2str8, unix2str6, unix2int
 export str2date, str2datetime, str2unix, int2unix
 export normalize_code, isfutcode, iscommcode, next_tradetime, isholiday

@@ -232,7 +232,6 @@ function to_category(x)
     return sr
 end
 
-
 @generated function subslice(x::AbstractArray{T, N}) where {T, N}
     inds = ntuple(i -> (:), N - 1)
     :($inds)
