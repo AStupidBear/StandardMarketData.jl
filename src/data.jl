@@ -153,7 +153,7 @@ function initdata(dst, F, N, T; feature = nothing)
                 d_zeros(fid, string(s), Float32, N, T)
             end
         end
-        fid["交易池"][:, :] .= 1
+        fid["交易池"][:, :] = 1
         if !isempty(feature)
             特征名 = Dict(reverse(p) for p in enumerate(feature))
             write_nonarray(fid, "特征名", 特征名)
