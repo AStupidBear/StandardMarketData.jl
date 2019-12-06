@@ -30,7 +30,7 @@ function tsfresh(df, y = nothing; shifts = ["20T"], horizon = "20T", remove = tr
     df_ts.to_parquet("df.parquet")
     y.to_frame().to_pickle("y.pkl")
     !isdir("tsfresh") && mkdir("tsfresh")
-    h5s = map(Iterators.product(df_fea.columns, shifts)) do (column, shift)
+    h5s = pmap(Iterators.product(df_fea.columns, shifts)) do (column, shift)
         _tsfresh(column, shift; ka...)
     end
     if length(df) != length(y)
