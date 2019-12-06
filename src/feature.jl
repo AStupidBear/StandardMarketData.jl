@@ -3,10 +3,12 @@ function _tsfresh(column, shift; ka...)
     @from tsfresh.utilities.dataframe_functions imports roll_time_series
     dst = @sprintf("tsfresh/%s_%s.h5", column, shift)
     isfile(dst) && return dst
-    df = pd.read_parquet("pmap.parquet", columns = ["代码", column])
-    y = pd.read_parquet("pmap.parquet", columns = "y")["y"]
-    df_ts = roll_time_series(df, "代码", nothing, nothing, 1, shift)
-    df_erf = extract_relevant_features(df_ts, y; column_id = "代码",
+    df = pd.read_parquet("df.parquet", columns = ["代码", column])
+    y = pd.read_pickle("y.pkl")["y"]
+    if length(y) == length(df)
+        df = roll_time_series(df, "代码", nothing, nothing, 1, shift)
+    end
+    df_erf = extract_relevant_features(df, y; column_id = "代码",
             default_fc_parameters = TradingFCParameters(shift), ka...)
     df_erf = df_erf.astype("float32").drop(columns = "代码", errors = "ignore")
     df_erf.columns = ["$c-$shift" for c in df_erf.columns]
@@ -15,22 +17,29 @@ function _tsfresh(column, shift; ka...)
     return dst
 end
 
-function tsfresh(df; shifts = ["20T"], horizon = "20T", remove = true, ka...)
+function tsfresh(df, y = nothing; shifts = ["20T"], horizon = "20T", remove = true, ka...)
     Δt = df["时间戳"].groupby(df["代码"]).diff().median()
     shifts = @. ceil(Int, parsefreq(shifts) / Δt)
-    horizon = ceil(Int, parsefreq(horizon) / Δt)
-    y = df["涨幅"].groupby(df["代码"]).rolling(horizon).sum().groupby("代码").shift(-horizon).fillna(0)
-    y = Series(y.reset_index(level = "代码", drop = true).sort_index().astype("float32"), name = "y")
+    if isnothing(y)
+        horizon = ceil(Int, parsefreq(horizon) / Δt)
+        y = df["涨幅"].groupby(df["代码"]).rolling(horizon).sum().groupby("代码").shift(-horizon).fillna(0)
+        y = Series(y.reset_index(level = "代码", drop = true).sort_index().astype("float32"), name = "y")
+    end
     df_meta, df_fea = split_metafeat(df)
-    y = Series(rand(length(df)), name = "y")
-    df_ts = pdhcat(df_fea, df_meta[["代码"]], y.to_frame())
-    df_ts.to_parquet("pmap.parquet")
+    df_ts = pdhcat(df_fea, df_meta[["代码"]])
+    df_ts.to_parquet("df.parquet")
+    y.to_frame().to_pickle("y.pkl")
     !isdir("tsfresh") && mkdir("tsfresh")
-    h5s = pmap(Iterators.product(df_fea.columns, shifts)) do (column, shift)
+    h5s = map(Iterators.product(df_fea.columns, shifts)) do (column, shift)
         _tsfresh(column, shift; ka...)
     end
-    df = pdhcat(df_meta, df_fea, read_hdf5.(h5s)...)
-    remove && foreach(rm, ["pmap.parquet", h5s...])
+    if length(df) != length(y)
+        df = df.drop_duplicates(subset = "代码", keep = "last")
+        df.reset_index(inplace = true)
+        @assert length(df) == length(y)
+    end
+    df = pdhcat(df, read_hdf5.(h5s)...)
+    remove && foreach(rm, ["df.parquet", "y.pkl", h5s...])
     return df
 end
 

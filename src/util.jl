@@ -251,6 +251,7 @@ end
 Base.dropdims(f, A::AbstractArray; dims) = dropdims(f(A, dims = dims), dims = dims)
 
 function arr2rng(x)
+    isempty(x) && return x
     r = UnitRange(extrema(x)...)
     r == x ? r : x
 end

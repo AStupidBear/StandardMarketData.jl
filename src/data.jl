@@ -163,6 +163,7 @@ function initdata(dst, F, N, T; feature = nothing)
 end
 
 function Base.show(io::IO, data::Data)
+    isempty(data) && return 
     compact = get(io, :compact, false)
     @printf(io, "特征数: %d\t", nfeats(data))
     @printf(io, "品种数: %d\t", ncodes(data))
@@ -563,7 +564,7 @@ function _to_data(df, dst)
     dst = initdata(dst, F, N, T)
     h5open(dst, "r+") do fid
         @showprogress "to_data.meta..." for c in metacols(df)
-            if c == "时间戳"
+            if c == "时间戳" && df[c].dtype.kind == "M"
                 x = df[c].astype("int").div(1e9).values
             elseif c == "代码"
                 x = from_category(df[c])

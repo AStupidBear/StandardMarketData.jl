@@ -1,7 +1,7 @@
 name = "StandardMarketData"
 uuid = "7a408522-0ffe-11ea-0d13-d3c3bdffbeb4"
 authors = ["Yao Lu <luyaocns@gmail.com>"]
-version = "0.1.0"
+version = "0.1.1"
 
 [deps]
 BSON = "fbb218c0-5317-5bc6-957e-2ee96dd4b1f0"
