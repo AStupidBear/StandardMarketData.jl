@@ -455,7 +455,7 @@ Base.isempty(data::Data) = length(data) == 0
 
 pivot(datas::AbstractArray{<:Data}) = concat(map(vec, datas), -1)
 
-function pivot(data::Data; dst = "pivot.h5")
+function pivot(data::Data; meta_only = false, dst = "pivot.h5")
     ncodes(data) > 1 && (data = vec(data))
     dates, codes = epochsof(data), codesof(data)
     multidx = pd.MultiIndex.from_product((dates, to_category(codes)));
@@ -463,6 +463,7 @@ function pivot(data::Data; dst = "pivot.h5")
     df = df.reset_index().set_index(["时间戳", "代码"]).reindex(multidx);
     df["index"] = df["index"].fillna(-1).astype("int") + 1
     F, N, T = nfeats(data), length(codes), length(dates)
+    F = meta_only ? 1 : F
     index = reshape(df["index"].values, N, T)
     initdata(dst, F, N, T, feature = featnames(data))
     data′ = loaddata(dst, mode = "r+")
@@ -475,6 +476,7 @@ function pivot(data::Data; dst = "pivot.h5")
         src = getfield(data, s)
         dest = getfield(data′, s)
         if s == :特征
+            meta_only && continue
             for t in 1:T, n in 1:N
                 i = index[n, t]
                 i > 0 && for f in 1:F
@@ -556,19 +558,19 @@ function to_df(data::Data; columns = nothing, meta_only = false, cnvtdate = fals
     return df
 end
 
-function to_data(df, dst)
+function to_data(df, dst; ka...)
     try
-        _to_data(df, dst)
+        _to_data(df, dst; ka...)
     catch e
         rm(dst, force = true)
         throw(e)
     end
 end
 
-function _to_data(df, dst)
+function _to_data(df, dst; ncode = 0)
     isempty(df) && return
     F = length(featcols(df))
-    N = df["代码"].nunique()
+    N = ncode == 0 ? df["代码"].nunique() : ncode
     T = length(df) ÷ N
     @assert N * T == length(df)
     dst = initdata(dst, F, N, T)
@@ -607,6 +609,15 @@ featcols(df) = sort!(setdiff(df.columns, string.(afieldnames(Data))))
 metacols(df) = sort!(setdiff(df.columns, featcols(df)))
 
 split_metafeat(df) = df[metacols(df)], df[featcols(df)]
+
+function isdatafile(h5)
+    try
+        loaddata(h5)
+        return true
+    catch e
+        return false
+    end
+end
 
 # function reweight_pnl(data)
 #     date = lastdayofmonth.(unix2datetime.(data.时间戳))
