@@ -529,7 +529,7 @@ end
 Base.show(io::IO, ::MIME"text/plain", ::Array{<:Data}) = 
     print(io, "Array of Data")
 
-function roll(data, rolltrn, rolltst)
+function rolldata(data, rolltrn, rolltst)
     ti, tf = map(unix2date, extrema(data.时间戳))
     Δtb = Day(parsefreq(rolltrn) ÷ 3600 ÷ 24)
     Δtf = Day(parsefreq(rolltst) ÷ 3600 ÷ 24)
