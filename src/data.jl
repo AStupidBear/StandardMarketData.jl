@@ -534,7 +534,7 @@ function rolldata(data, rolltrn, rolltst)
     Δtb = Day(parsefreq(rolltrn) ÷ 3600 ÷ 24)
     Δtf = Day(parsefreq(rolltst) ÷ 3600 ÷ 24)
     inds = rollindices(ti, tf, Δtb, Δtf)
-    @views ((data[:, t1], data[:, t2]) for (t1, t2) in inds)
+    @views ((data[t1], data[t2]) for (t1, t2) in inds)
 end
 
 function to_df(data::Data; columns = nothing, meta_only = false, cnvtdate = false)
