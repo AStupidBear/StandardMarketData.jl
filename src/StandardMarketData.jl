@@ -11,7 +11,7 @@ import StatsBase
 
 export Data, loaddata, savedata, reloaddata, initdata
 export nfeats, ncodes, nticks, ndays, nticksperday, period
-export rescale!, rescale, downsample, featnames
+export discretize!, discretize, undiscretize, downsample, featnames
 export getfeat, getfeats, @uncol, dropfeats, keepfeats, getcats, keepcats
 export datespan, firstdate, lastdate, getlabel, setcomm, setpool
 export epochsof, datetimesof, datesof, codesof, parsefreq
@@ -28,5 +28,6 @@ const SMD = StandardMarketData
 include("data.jl")
 include("util.jl")
 include("feature.jl")
+include("discretize.jl")
 
 end

@@ -77,7 +77,7 @@ ndays(data) = sortednunique(unix2date, view(data.时间戳, 1, :))
 
 nticksperday(data) = nticks(data) ÷ ndays(data)
 
-const _nrmcoefmap = Dict{String, NTuple{4, Float32}}()
+const _edgemap = Dict{String, Vector{Float32}}()
 
 const _sourcemap = Dict{UInt, String}()
 
@@ -86,13 +86,10 @@ sourceof(x) = get(_sourcemap, hash(x), nothing)
 function _loaddata(src; mode = "r", ti = nothing, tf = nothing, ka...)
     if endswith(src, ".h5")
         data = h5load(src, Data; mode = mode, ka...)
-        coeff_names = filter(h5open(names, src)) do c
-            occursin(r"norm|nrm|归一", c)
-        end
-        if length(coeff_names) == 1
-            coeff = h5read(src, coeff_names[1])
+        if "bin_edges" ∈ h5open(names, h5)
+            bin_edges = h5read(src, "bin_edges")
             for (c, f) in data.特征名
-                _nrmcoefmap[c] = tuple(coeff[:, f]...)
+                _edgemap[c] = bin_edges[:, f]
             end
         end
     elseif endswith(src, ".bson")
@@ -137,6 +134,7 @@ function savedata(dst, data)
     elseif endswith(dst, ".h5")
         h5save(dst, data)
     end
+    return dst
 end
 
 function reloaddata(data)
@@ -224,54 +222,6 @@ function print_header_stats(io, header, stats)
     end
 end
 
-function rescale!(srcs; fillnan = true, ignored_columns = [])
-    isa(srcs, AbstractArray) || (srcs = [srcs])
-    datas = loaddata.(srcs, mode = "r+")
-    F, N, T = size(datas[1].特征)
-    nrmcoef = zeros(Float32, 4, F)
-    ignored_feas = [get(datas[1].特征名, c, c) for c in ignored_columns]
-    @showprogress "computing nrmcoef..." for f in 1:F
-        if f ∈ ignored_feas
-            nrmcoef[:, f] = [-Inf32, Inf32, 0f0, 1f0]
-        else
-            ts = 1:max(1, T ÷ 10^6):T
-            y = filter(!isnan, datas[1].特征[f, :, ts])
-            if !isempty(y)
-                θd, θu = quantile(y, [0.01f0, 0.99f0])
-                clamp!(y, θd, θu)
-                μ, σ = mean(y), std(y)
-                σ = ifelse(isnan(σ), 1f0, σ)
-                nrmcoef[:, f] = [θd, θu, μ, σ]
-            else
-                nrmcoef[:, f] = [0f0, 0f0, 0f0, 1f0]
-            end
-        end
-    end
-    for (src, data) in zip(srcs, datas)
-        name = @sprintf("normalizing %s...", basename(src))
-        F, N, T = size(data.特征)
-        @showprogress name for t in 1:T
-            x = data.特征[:, :, t]
-            for n in 1:N, f in 1:F
-                xfn = clamp(x[f, n], nrmcoef[1, f], nrmcoef[2, f])
-                xfn = ifelse(isnan(xfn) && fillnan, nrmcoef[3, f], xfn)
-                x[f, n] = (xfn - nrmcoef[3, f]) ⧶ nrmcoef[4, f]
-            end
-            data.特征[:, :, t] = x
-        end
-        Mmap.sync!(data.特征)
-        h5write(src, "归一系数", nrmcoef)
-    end
-    return srcs
-end
-
-function rescale(h5)
-    h5′ = replace(h5, ".h5" => "_norm.h5")
-    run(`cp $h5 $h5′`)
-    rescale!(h5′)
-    return h5
-end
-
 _diff(x) = length(x) > 1 ? diff(x) : [zero(eltype(x))]
 
 period(data) = median(_diff(view(data.时间戳, 1, :)))
@@ -311,9 +261,8 @@ function getfeat(data::Data, c; denorm = true, errors = "raise")
     if c in keys(data.特征名)
         f = data.特征名[c]
         x = @view data.特征[f, :, :]
-        if haskey(_nrmcoefmap, c) && denorm
-            θd, θu, μ, σ = _nrmcoefmap[c]
-            x = x .* σ .+ μ
+        if haskey(_edgemap, c) && denorm
+            undiscretize(x, _edgemap[c])
         end
         return x
     elseif Symbol(c) in fieldnames(Data)
