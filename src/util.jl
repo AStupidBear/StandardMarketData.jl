@@ -201,6 +201,23 @@ end
 
 sortednunique(x) = sortednunique(identity, x)
 
+function sortedunique(f, x)
+    n = 1
+    yl = f(x[1])
+    yu = [yl]
+    @inbounds for xi in x
+        yi = f(xi)
+        if yi != yl
+            n += 1
+            push!(yu, yi)
+        end
+        yl = yi
+    end
+    return yu
+end
+
+sortedunique(x) = sortedunique(identity, x)
+
 Mmap.sync!(m::AbstractArray) = isdefined(m, :parent) && Mmap.sync!(m.parent)
 
 parsefreq(freq) = freq

@@ -43,8 +43,7 @@ for f in [:getindex, :view]
 
     @eval function Base.$f(data::Data, code::String)
         code = MLString{8}(code)
-        isequal(x, y) = x.data == y.data
-        mask = @. isequal(data.代码, code)
+        mask = data.代码 .== code
         ns = findall(vec(any(mask, dims = 2)))
         ts = findall(vec(any(mask, dims = 1)))
         $f(data, arr2rng(ns), arr2rng(ts))
@@ -143,7 +142,7 @@ function reloaddata(data)
     loaddata(dst, mode = "r+")
 end
 
-function initdata(dst, F, N, T; feature = nothing)
+function initdata(dst, eltyp, (F, N, T), feature = nothing)
     isfile(dst) && rm(dst)
     feature = something(feature, string.(1:F))
     h5open(dst, "w", "alignment", (0, 8)) do fid
@@ -156,7 +155,7 @@ function initdata(dst, F, N, T; feature = nothing)
             elseif s == :涨停 || s == :跌停 || s == :交易池
                 d_zeros(fid, string(s), UInt8, N, T)
             elseif s == :特征
-                d_zeros(fid, string(s), Float32, F, N, T)
+                d_zeros(fid, string(s), eltyp, F, N, T)
             else
                 d_zeros(fid, string(s), Float32, N, T)
             end
@@ -402,75 +401,78 @@ end
 
 Base.isempty(data::Data) = length(data) == 0
 
-pivot(datas::AbstractArray{<:Data}) = concat(map(vec, datas), -1)
+pivot(datas::AbstractArray{<:Data}, a...; ka...) = pivot(concat(map(vec, datas), -1), a...; ka...)
 
-function pivot(data::Data; meta_only = false, dst = "pivot.h5")
-    ncodes(data) > 1 && (data = vec(data))
-    dates, codes = epochsof(data), codesof(data)
-    multidx = pd.MultiIndex.from_product((dates, to_category(codes)));
-    df = to_df(data, meta_only = true, columns = ["时间戳", "代码"])
-    df = df.reset_index().set_index(["时间戳", "代码"]).reindex(multidx);
-    df["index"] = df["index"].fillna(-1).astype("int") + 1
-    F, N, T = nfeats(data), length(codes), length(dates)
-    F = meta_only ? 1 : F
-    index = reshape(df["index"].values, N, T)
-    initdata(dst, F, N, T, feature = featnames(data))
-    data′ = loaddata(dst, mode = "r+")
+
+function pivot(data::Data, dst = "pivot.h5"; meta_only = false)
+    epochs = epochsof(data)
+    codes = codesof(data)
+    F = nfeats(data)
+    F′ = meta_only ? 1 : F
+    N, T = size(data)
+    N′ = length(codes)
+    T′ = length(epochs)
+    index = fill((0, 0), N, T)
+    @unpack 代码, 时间戳 = data
+    codemap = Dict(reverse.(enumerate(codes)))
+    epochmap = Dict(reverse.(enumerate(epochs)))
+    @showprogress "index" for t in 1:T, n in 1:N
+        # n′ = codemap[MLString{8}(代码[n, t])]
+        n′ = codemap[代码[n, t]]
+        t′ = epochmap[时间戳[n, t]]
+        index[n, t] = (n′, t′)
+    end
+    data′ = similar(data, (F′, N′, T′), dst)
     fill!(data′.涨停, 1)
     fill!(data′.跌停, 1)
     fill!(data′.交易池, 0)
-    for s in fieldnames(Data)
-        typ = fieldtype(Data, s)
-        typ <: AbstractArray || continue
+    for s in afieldnames(Data)
         src = getfield(data, s)
         dest = getfield(data′, s)
         if s == :特征
             meta_only && continue
-            for t in 1:T, n in 1:N
-                i = index[n, t]
-                i > 0 && for f in 1:F
-                    dest[f, n, t] = src[f, 1, i]
+            @showprogress s for t in 1:T, n in 1:N
+                n′, t′ = index[n, t]
+                for f in 1:F
+                    dest[f, n′, t′] = src[f, n, t]
                 end
             end
         elseif s == :时间戳
-            for t in 1:T, n in 1:N
-                dest[n, t] = dates[t]
+            @showprogress s for t′ in 1:T′, n′ in 1:N′
+                dest[n′, t′] = epochs[t′]
             end
         elseif s == :代码
-            for t in 1:T, n in 1:N
-                dest[n, t] = codes[n]
+            @showprogress s for t′ in 1:T′, n′ in 1:N′
+                dest[n′, t′] = codes[n′]
             end
         else
-            for t in 1:T, n in 1:N
-                i = index[n, t]
-                if i > 0
-                    dest[n, t] = src[i]
+            @showprogress s for t in 1:T, n in 1:N
+                n′, t′ = index[n, t]
+                dest[n′, t′] = src[n, t]
+            end
+            s == :价格 && @showprogress s for t′ in 2:T′, n′ in 1:N′
+                if iszero(dest[n′, t′])
+                    dest[n′, t′] = dest[n′, t′ - 1]
                 end
             end
-            s == :价格 && for t in 2:T, n in 1:N
-                if iszero(dest[n, t])
-                    dest[n, t] = dest[n, t - 1]
-                end
-            end
-            s == :价格 && for t in (T - 1):-1:1, n in 1:N
-                if iszero(dest[n, t])
-                    dest[n, t] = dest[n, t + 1]
+            s == :价格 && @showprogress s for t′ in (T′ - 1):-1:1, n′ in 1:N′
+                if iszero(dest[n′, t′])
+                    dest[n′, t′] = dest[n′, t′ + 1]
                 end
             end
         end
     end
     @. data′.跌停 = ifelse(isone(data′.交易池), data′.跌停, 0f0)
     @. data′.涨停 = ifelse(isone(data′.交易池), data′.涨停, 0f0)
+    Mmap.sync!(data′)
     return data′, index
 end
 
 function pivot(src::AbstractArray{T, N}, index) where {T, N}
-    dest = zeros(T, size(index))
+    dims′ = ntuple(d -> maximum(I -> I[d], index), N)
+    dest = zeros(T, dims′...)
     for n in 1:length(index)
-        i = index[n]
-        if i > 0
-            dest[n] = src[i]
-        end
+        dest[index[n]...] = src[n]
     end
     return dest
 end
@@ -522,7 +524,7 @@ function _to_data(df, dst; ncode = 0)
     N = ncode == 0 ? df["代码"].nunique() : ncode
     T = length(df) ÷ N
     @assert N * T == length(df)
-    dst = initdata(dst, F, N, T)
+    dst = initdata(dst, Float32, (F, N, T), featcols(df))
     h5open(dst, "r+") do fid
         @showprogress "to_data.meta..." for c in metacols(df)
             if c == "时间戳" && df[c].dtype.kind == "M"
@@ -546,8 +548,6 @@ function _to_data(df, dst; ncode = 0)
             x = reshape(slc, F, N, :)
             fid["特征"][:, :, ti:tf] = x
         end
-        特征名 = Dict(reverse(p) for p in enumerate(featcols(df)))
-        write_nonarray(fid, "特征名", 特征名)
     end
     @eval GC.gc()
     return dst
@@ -565,6 +565,19 @@ function isdatafile(h5)
         return true
     catch e
         return false
+    end
+end
+
+Base.eltype(data::Data) = eltype(data.特征)
+
+function Base.similar(data::Data, dims, dst = randstring())
+    initdata(dst, eltype(data), dims, featnames(data))
+    loaddata(dst, mode = "r+")
+end
+
+function Mmap.sync!(data::Data)
+    for s in afieldnames(data)
+        Mmap.sync!(getfield(data, s))
     end
 end
 

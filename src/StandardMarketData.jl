@@ -9,8 +9,8 @@ using BlockArrays: _BlockArray
 using PandasLite: StringRange
 import StatsBase
 
-export Data, loaddata, savedata, reloaddata, initdata
-export nfeats, ncodes, nticks, ndays, nticksperday, period
+export Data, loaddata, savedata, reloaddata
+export nfeats, ncodes, nticks, ndays, nticksperday
 export discretize!, discretize, undiscretize, downsample, featnames
 export getfeat, getfeats, @uncol, dropfeats, keepfeats, getcats, keepcats
 export datespan, firstdate, lastdate, getlabel, setcomm, setpool
@@ -20,7 +20,7 @@ export unix2date, unix2time, unix2str8, unix2str6, unix2int
 export str2date, str2datetime, str2unix, int2unix
 export normalize_code, isfutcode, iscommcode, next_tradetime, isholiday
 export lngstconsec, reindex_columns, concat_hdfs, concat_txts, catlag
-export to_dict, to_struct, parsefreq, sortednunique, idxmap, ⧶
+export to_dict, to_struct, parsefreq, sortedunique, sortednunique, idxmap, ⧶
 export SMD, talib, tsfresh, to_category, from_category
 
 const SMD = StandardMarketData
