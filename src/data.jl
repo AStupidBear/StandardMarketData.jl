@@ -86,7 +86,7 @@ sourceof(x) = get(_sourcemap, hash(x), nothing)
 function _loaddata(src; mode = "r", ti = nothing, tf = nothing, ka...)
     if endswith(src, ".h5")
         data = h5load(src, Data; mode = mode, ka...)
-        if "bin_edges" ∈ h5open(names, h5)
+        if "bin_edges" ∈ h5open(names, src)
             bin_edges = h5read(src, "bin_edges")
             for (c, f) in data.特征名
                 _edgemap[c] = bin_edges[:, f]
