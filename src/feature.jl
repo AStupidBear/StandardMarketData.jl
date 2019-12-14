@@ -4,6 +4,9 @@ function _tsfresh(column, shift; ka...)
     dst = @sprintf("tsfresh/%s_%s.h5", column, shift)
     isfile(dst) && return dst
     df = pd.read_parquet("df.parquet", columns = ["代码", column])
+    if df[column].dtype == "uint8"
+        df[column] = df[column] / 128 - 1
+    end
     y = pd.read_pickle("y.pkl")["y"]
     if length(y) == length(df)
         df = roll_time_series(df, "代码", nothing, nothing, 1, shift)
