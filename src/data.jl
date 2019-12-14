@@ -401,61 +401,66 @@ end
 
 Base.isempty(data::Data) = length(data) == 0
 
-pivot(datas::AbstractArray{<:Data}, a...; ka...) = pivot(concat(map(vec, datas), -1), a...; ka...)
+Base.copy(data::Data) = to_struct(Data, to_dict(data))
 
+pivot(datas::AbstractArray{<:Data}, a...; ka...) = pivot(concat(map(vec, datas), -1), a...; ka...)
 
 function pivot(data::Data, dst = "pivot.h5"; meta_only = false)
     epochs = epochsof(data)
     codes = codesof(data)
     F = nfeats(data)
-    F′ = meta_only ? 1 : F
     N, T = size(data)
     N′ = length(codes)
     T′ = length(epochs)
+    if meta_only
+        F, dict = 1, to_dict(data)
+        dict[:特征] = zeros(eltype(data), 1,N, T)
+        dict[:特征名] = Dict("dummy" => 1)
+        data = to_struct(Data, dict)
+    end
     index = fill((0, 0), N, T)
     @unpack 代码, 时间戳 = data
     codemap = Dict(reverse.(enumerate(codes)))
     epochmap = Dict(reverse.(enumerate(epochs)))
-    @showprogress "index" for t in 1:T, n in 1:N
-        # n′ = codemap[MLString{8}(代码[n, t])]
+    @showprogress "pivot.index" for t in 1:T, n in 1:N
         n′ = codemap[代码[n, t]]
         t′ = epochmap[时间戳[n, t]]
         index[n, t] = (n′, t′)
     end
-    data′ = similar(data, (F′, N′, T′), dst)
+    data′ = similar(data, (F, N′, T′), dst)
     fill!(data′.涨停, 1)
     fill!(data′.跌停, 1)
     fill!(data′.交易池, 0)
     for s in afieldnames(Data)
         src = getfield(data, s)
         dest = getfield(data′, s)
+        desc = string("pivot.", s)
         if s == :特征
-            meta_only && continue
-            @showprogress s for t in 1:T, n in 1:N
+            @showprogress desc for t in 1:T, n in 1:N
                 n′, t′ = index[n, t]
                 for f in 1:F
                     dest[f, n′, t′] = src[f, n, t]
                 end
             end
         elseif s == :时间戳
-            @showprogress s for t′ in 1:T′, n′ in 1:N′
+            @showprogress desc for t′ in 1:T′, n′ in 1:N′
                 dest[n′, t′] = epochs[t′]
             end
         elseif s == :代码
-            @showprogress s for t′ in 1:T′, n′ in 1:N′
+            @showprogress desc for t′ in 1:T′, n′ in 1:N′
                 dest[n′, t′] = codes[n′]
             end
         else
-            @showprogress s for t in 1:T, n in 1:N
+            @showprogress desc for t in 1:T, n in 1:N
                 n′, t′ = index[n, t]
                 dest[n′, t′] = src[n, t]
             end
-            s == :价格 && @showprogress s for t′ in 2:T′, n′ in 1:N′
+            s == :价格 && @showprogress desc for t′ in 2:T′, n′ in 1:N′
                 if iszero(dest[n′, t′])
                     dest[n′, t′] = dest[n′, t′ - 1]
                 end
             end
-            s == :价格 && @showprogress s for t′ in (T′ - 1):-1:1, n′ in 1:N′
+            s == :价格 && @showprogress desc for t′ in (T′ - 1):-1:1, n′ in 1:N′
                 if iszero(dest[n′, t′])
                     dest[n′, t′] = dest[n′, t′ + 1]
                 end
@@ -576,7 +581,7 @@ function Base.similar(data::Data, dims, dst = randstring())
 end
 
 function Mmap.sync!(data::Data)
-    for s in afieldnames(data)
+    for s in afieldnames(Data)
         Mmap.sync!(getfield(data, s))
     end
 end
