@@ -431,39 +431,54 @@ function pivot(data::Data, dst = "pivot.h5"; meta_only = false)
     fill!(data′.涨停, 1)
     fill!(data′.跌停, 1)
     fill!(data′.交易池, 0)
-    for s in afieldnames(Data)
+    @inbounds for s in afieldnames(Data)
         src = getfield(data, s)
         dest = getfield(data′, s)
         desc = string("pivot.", s)
+        p = Progress(T, desc = desc)
         if s == :特征
-            @showprogress desc for t in 1:T, n in 1:N
-                n′, t′ = index[n, t]
-                for f in 1:F
-                    dest[f, n′, t′] = src[f, n, t]
+            Threads.@threads for t in 1:T
+                for n in 1:N
+                    n′, t′ = index[n, t]
+                    for f in 1:F
+                        dest[f, n′, t′] = src[f, n, t]
+                    end
                 end
+                next!(p)
             end
         elseif s == :时间戳
-            @showprogress desc for t′ in 1:T′, n′ in 1:N′
-                dest[n′, t′] = epochs[t′]
+            Threads.@thread for t′ in 1:T′
+                for n′ in 1:N′
+                    dest[n′, t′] = epochs[t′]
+                end
+                next!(p)
             end
         elseif s == :代码
-            @showprogress desc for t′ in 1:T′, n′ in 1:N′
-                dest[n′, t′] = codes[n′]
+            Threads.@thread for t′ in 1:T′
+                for n′ in 1:N′
+                    dest[n′, t′] = codes[n′]
+                end
             end
         else
-            @showprogress desc for t in 1:T, n in 1:N
+            Threads.@thread for t in 1:T, n in 1:N
                 n′, t′ = index[n, t]
                 dest[n′, t′] = src[n, t]
             end
-            s == :价格 && @showprogress desc for t′ in 2:T′, n′ in 1:N′
-                if iszero(dest[n′, t′])
-                    dest[n′, t′] = dest[n′, t′ - 1]
+            s == :价格 && Threads.@thread for t′ in 2:T′
+                for n′ in 1:N′
+                    if iszero(dest[n′, t′])
+                        dest[n′, t′] = dest[n′, t′ - 1]
+                    end
                 end
+                next!(p)
             end
-            s == :价格 && @showprogress desc for t′ in (T′ - 1):-1:1, n′ in 1:N′
-                if iszero(dest[n′, t′])
-                    dest[n′, t′] = dest[n′, t′ + 1]
+            s == :价格 && Threads.@thread for t′ in (T′ - 1):-1:1
+                for n′ in 1:N′
+                    if iszero(dest[n′, t′])
+                        dest[n′, t′] = dest[n′, t′ + 1]
+                    end
                 end
+                next!(p)
             end
         end
     end
