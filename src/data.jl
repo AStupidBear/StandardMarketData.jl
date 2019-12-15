@@ -405,6 +405,8 @@ Base.copy(data::Data) = to_struct(Data, to_dict(data))
 
 pivot(datas::AbstractArray{<:Data}, a...; ka...) = pivot(concat(map(vec, datas), -1), a...; ka...)
 
+pivot(h5::String, a...; ka...) = pivot(loaddata(h5), a...; ka...)
+
 function pivot(data::Data, dst = "pivot.h5"; meta_only = false)
     epochs = epochsof(data)
     codes = codesof(data)
@@ -447,24 +449,26 @@ function pivot(data::Data, dst = "pivot.h5"; meta_only = false)
                 next!(p)
             end
         elseif s == :时间戳
-            Threads.@thread for t′ in 1:T′
+            Threads.@threads for t′ in 1:T′
                 for n′ in 1:N′
                     dest[n′, t′] = epochs[t′]
                 end
                 next!(p)
             end
         elseif s == :代码
-            Threads.@thread for t′ in 1:T′
+            Threads.@threads for t′ in 1:T′
                 for n′ in 1:N′
                     dest[n′, t′] = codes[n′]
                 end
             end
         else
-            Threads.@thread for t in 1:T, n in 1:N
-                n′, t′ = index[n, t]
-                dest[n′, t′] = src[n, t]
+            Threads.@threads for t in 1:T
+                for n in 1:N
+                    n′, t′ = index[n, t]
+                    dest[n′, t′] = src[n, t]
+                end
             end
-            s == :价格 && Threads.@thread for t′ in 2:T′
+            s == :价格 && Threads.@threads for t′ in 2:T′
                 for n′ in 1:N′
                     if iszero(dest[n′, t′])
                         dest[n′, t′] = dest[n′, t′ - 1]
@@ -472,7 +476,7 @@ function pivot(data::Data, dst = "pivot.h5"; meta_only = false)
                 end
                 next!(p)
             end
-            s == :价格 && Threads.@thread for t′ in (T′ - 1):-1:1
+            s == :价格 && Threads.@threads for t′ in (T′ - 1):-1:1
                 for n′ in 1:N′
                     if iszero(dest[n′, t′])
                         dest[n′, t′] = dest[n′, t′ + 1]
