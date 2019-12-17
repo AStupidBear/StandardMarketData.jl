@@ -329,12 +329,12 @@ function getlabel(data::Data, h::Int)
     r = zeros(Float32, N)
     for t in T:-1:(T - h + 1), n in 1:N
         r[n] += 涨幅[n, t]
-        l[n, t] = r[n] / h
+        l[n, t] = r[n]
     end
     @showprogress "getlabel..." for t in (T - h):-1:1
         for n in 1:N
             r[n] += 涨幅[n, t] - 涨幅[n, t + h]
-            l[n, t] = r[n] / h
+            l[n, t] = r[n]
         end
     end
     return l
@@ -371,13 +371,13 @@ function Base.repeat(data::Data, n)
     return Data(fvs...)
 end
 
-epochsof(data::Data) = unique(data.时间戳)
+epochsof(data::Data) = sort(unique(data.时间戳))
 
 datetimesof(data::Data) = map(unix2datetime, epochsof(data))
 
 datesof(data::Data) = map(unix2date, epochsof(data))
 
-codesof(data::Data) = unique(data.代码)
+codesof(data::Data) = sort(unique(data.代码))
 
 normal_mask(data::Data) = @. iszero(data.涨停) | iszero(data.跌停)
 
