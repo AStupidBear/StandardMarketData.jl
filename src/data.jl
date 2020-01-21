@@ -381,7 +381,21 @@ codesof(data::Data) = sort(unique(data.代码))
 
 normal_mask(data::Data) = @. iszero(data.涨停) | iszero(data.跌停)
 
+function isaligned(datas)
+    isempty(datas) && return true
+    codes = datas[1].代码[:, 1]
+    for data in datas[2:end]
+        if data.代码[:, 1] != codes
+            return false
+        end
+    end
+    return true
+end
+
 function concat(datas, dim)
+    if dim == -1 && !isaligned(datas)
+        return pivot(datas)
+    end
     fvs = []
     for s in fieldnames(Data)
         xs = getfield.(datas, s)
