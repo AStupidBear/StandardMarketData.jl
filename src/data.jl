@@ -106,12 +106,12 @@ function _loaddata(src; mode = "r", ti = nothing, tf = nothing, ka...)
     end
 end
 
-function loaddata(srcs::AbstractArray; dim = -1, ka...)
+function loaddata(srcs::AbstractArray; dims = -1, ka...)
     datas = @showprogress "loaddata..." map(srcs) do src
         _loaddata(src; ka...)
     end
     length(srcs) == 1 && return datas[1]
-    concat(filter(!isempty, datas), dim)
+    concat(filter(!isempty, datas), dims)
 end
 
 function loaddata(pattern; ka...)

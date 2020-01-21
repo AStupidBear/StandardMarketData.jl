@@ -89,7 +89,7 @@ mcopy(x::Series) = Series(mcopy(x.values), index = x.index, name = x.name)
 
 mcopy(x::DataFrame) = DataFrame(mcopy(x.values), index = x.index, columns = x.columns)
 
-part(df::DataFrame) = nprocs() > 1 ? part(df.iloc, dim = 1) : df
+part(df::DataFrame) = nprocs() > 1 ? part(df.iloc, 1) : df
 
 lngstconsec(s) = (!s).cumsum()[s].value_counts().max()
 
