@@ -106,15 +106,15 @@ function _loaddata(src; mode = "r", ti = nothing, tf = nothing, ka...)
     end
 end
 
-function loaddata(srcs::AbstractArray; dims = -1, ka...)
+function loaddata(srcs::AbstractArray, dim = -1; ka...)
     datas = @showprogress "loaddata..." map(srcs) do src
         _loaddata(src; ka...)
     end
     length(srcs) == 1 && return datas[1]
-    concat(filter(!isempty, datas), dims)
+    concat(filter(!isempty, datas), dim)
 end
 
-function loaddata(pattern; ka...)
+function loaddata(pattern, a...; ka...)
     if isfile(pattern)
         srcs = [pattern]
     else
@@ -124,7 +124,7 @@ function loaddata(pattern; ka...)
         root = joinpath(get(ENV, "JOB", ""), "data")
         srcs = glob(pattern, root)
     end
-    loaddata(srcs; ka...)
+    loaddata(srcs, a...; ka...)
 end
 
 function savedata(dst, data)
@@ -394,7 +394,12 @@ end
 
 function concat(datas, dim)
     if dim == -1 && !isaligned(datas)
-        return pivot(datas)
+        h5 = randstring() * ".h5"
+        data, = pivot(datas, h5)
+        finalizer(data) do d
+            rm(h5, force = true)
+        end
+        return data
     end
     fvs = []
     for s in fieldnames(Data)
