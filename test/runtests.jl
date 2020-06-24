@@ -3,10 +3,12 @@ using HDF5Utils
 using PandasLite
 using Statistics
 using Dates
+using Random
 using Test
 
 cd(mktempdir())
 
+Random.seed!(1234)
 F, N, T = 2, 5, 100
 
 特征名 = idxmap(string.("f", 1:F))
