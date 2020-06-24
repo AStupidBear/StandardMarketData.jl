@@ -1,11 +1,8 @@
-function discretize(h5::String; inplace = 0, name = "特征", host = nothing)
-    if isnothing(host)
-        host = join([gethostname() for n in 1:(Sys.CPU_THREADS ÷ 2 - 4)], ',')
-    end
+function discretize(h5::String; inplace = 0, name = "特征", mpiarg = ``)
     julia = joinpath(Sys.BINDIR, Base.julia_exename())
     h5disc = joinpath(@__DIR__, "h5disc.jl")
     project = joinpath(@__DIR__, "..")
-    run(`mpiexec --host $host $julia --project=$project $h5disc --name $name --inplace $inplace $h5`)
+    run(`mpiexec $mpiarg $julia --project=$project $h5disc --name $name --inplace $inplace $h5`)
     h5′ = replace(h5, ".h5" => "_UInt8.h5")
     inplace == 1 ? h5 : h5′
 end
