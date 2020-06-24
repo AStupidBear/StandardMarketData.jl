@@ -187,6 +187,8 @@ function rollindices(ti, tf, Δtb, Δtf)
     string(t):string(t + Δtf - Day(1)))
     for t in (ti + Δtf):Δtf:tf]
 end
+
+nunique(x) = length(Set(x))
     
 function sortednunique(f, x)
     n = 1
