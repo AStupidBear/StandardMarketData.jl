@@ -1,3 +1,4 @@
+using Revise
 using StandardMarketData
 using HDF5Utils
 using PandasLite
@@ -7,7 +8,7 @@ using Test
 
 cd(mktempdir())
 
-F, N, T = 2, 100, 1000
+F, N, T = 2, 5, 100
 
 特征名 = idxmap(string.("f", 1:F))
 特征 = randn(Float32, F, N, T)
@@ -22,13 +23,11 @@ ti, Δt = DateTime(2019, 1, 1), Hour(1)
 交易池 = ones(Float32, N, T)
 data = Data(特征名, 特征, 涨幅, 买手续费率, 卖手续费率, 涨停, 跌停, 代码, 时间戳, 价格, 交易池)
 
-initdata("test.h5", F, N, T)
 savedata("test.h5", data)
-rescale!("test.h5")
 @test data == reloaddata(data)
 @test nticks(downsample(data, "5H")) == T ÷ 5
 @test size(pivot(data)[1]) == (2N, T ÷ 2)
-@test isapprox(getlabel(data, 5)[:, 10], mean(涨幅[:, 10:14], dims = 2))
+@test isapprox(SMD.getlabel(data, 5)[:, 10], sum(涨幅[:, 11:15], dims = 2))
 
 @test nfeats(data) == F
 @test ncodes(data) == N
@@ -64,15 +63,16 @@ to_data(df, "tmp.h5")
 @test epochsof(data) == unique(时间戳)
 @test datetimesof(data) == unix2datetime.(epochsof(data))
 @test datesof(data) == unix2date.(epochsof(data))
-@test codesof(data) == unique(代码)
+@test Set(codesof(data)) == Set(unique(代码))
 
 @test parsefreq("1T") == 60
 @test str2date("20100101") == Date(2010, 01, 01)
 @test int2unix(20100101) == datetime2unix(DateTime(2010, 01, 01))
 
 @test normalize_code("000001") == "000001.XSHE"
-@test sortednunique([1,2,3,3,4]) == 4
-@test isempty(roll(data, "6M", "6M"))
+@test nunique([1, 2, 2, 3]) == 3
+@test sortednunique([1, 2, 3, 3, 4]) == 4
+@test isempty(rolldata(data, "6M", "6M"))
 
 @test next_tradetime(DateTime("2018-01-01T8:50"), "JM") == DateTime("2018-01-01T09:00:00")
 @test next_tradetime(DateTime("2018-01-01T8:50"), "000001") == DateTime("2018-01-01T09:30:00")
@@ -82,13 +82,13 @@ to_data(df, "tmp.h5")
 @test next_tradetime(DateTime("2018-01-01T15:15"), "000001") == DateTime("2018-01-02T09:30:00")
 
 x = data.特征
-x8, bin_edges = discretize(x)
+x8, bin_edges = discretize(x, host = "localhost")
 x′ = undiscretize(x8, bin_edges)
 @test mean(abs, x .- x′) < 0.01
 
-tsfresh(to_df(data), shifts = ["10H"], horizon = "3H")
+extract_tsfresh_feats(to_df(data), shifts = ["10H"], horizon = "3H")
 
 df = DataFrame("code" => vec(代码), "close" => vec(价格))
 df["high"] = df["low"] = df["open"] = df["close"]
 df["volume"] = rand(N * T)
-talib(df, "code")
+extract_talib_feats(df, "code")

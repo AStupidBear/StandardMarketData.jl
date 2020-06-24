@@ -1,4 +1,4 @@
-function _tsfresh(column, shift; ka...)
+function _extract_tsfresh_feats(column, shift; ka...)
     @from tsfresh imports extract_relevant_features
     @from tsfresh.utilities.dataframe_functions imports roll_time_series
     dst = @sprintf("tsfresh/%s_%s.h5", column, shift)
@@ -10,17 +10,21 @@ function _tsfresh(column, shift; ka...)
     y = pd.read_pickle("y.pkl")["y"]
     if length(y) == length(df)
         df = roll_time_series(df, "代码", nothing, nothing, 1, shift)
+        df.drop(columns = "代码", inplace = true)
+        y.index = df.groupby("id")["sort"].last().sort_values().index
+        df_erf = extract_relevant_features(df, y; column_id = "id", column_sort = "sort", ka...)
+    else
+        df_erf = extract_relevant_features(df, y; column_id = "代码", ka...)
+        df_erf.drop(columns = "代码", inplace = true)
     end
-    df_erf = extract_relevant_features(df, y; column_id = "代码",
-            default_fc_parameters = TradingFCParameters(shift), ka...)
-    df_erf = df_erf.astype("float32").drop(columns = "代码", errors = "ignore")
+    df_erf = df_erf.astype("float32")
     df_erf.columns = ["$c-$shift" for c in df_erf.columns]
     to_hdf5(df_erf, dst)
     @eval GC.gc()
     return dst
 end
 
-function tsfresh(df, y = nothing; shifts = ["20T"], horizon = "20T", remove = true, ka...)
+function extract_tsfresh_feats(df, y = nothing; shifts = ["20T"], horizon = "20T", remove = true, ka...)
     Δt = df["时间戳"].groupby(df["代码"]).diff().median()
     shifts = @. ceil(Int, parsefreq(shifts) / Δt)
     if isnothing(y)
@@ -34,7 +38,7 @@ function tsfresh(df, y = nothing; shifts = ["20T"], horizon = "20T", remove = tr
     y.to_frame().to_pickle("y.pkl")
     !isdir("tsfresh") && mkdir("tsfresh")
     h5s = pmap(Iterators.product(df_fea.columns, shifts)) do (column, shift)
-        _tsfresh(column, shift; ka...)
+        _extract_tsfresh_feats(column, shift; ka...)
     end
     if length(df) != length(y)
         df = df.drop_duplicates(subset = "代码", keep = "last")
@@ -46,7 +50,7 @@ function tsfresh(df, y = nothing; shifts = ["20T"], horizon = "20T", remove = tr
     return df
 end
 
-function talib(df, bycol = "code"; keep_columns = [])
+function extract_talib_feats(df, bycol = "code"; keep_columns = [])
     ohlc_cols = ["open", "high", "low", "close", "volume"]
     df_ohlc = df[ohlc_cols].astype("double")
     df_talib = df[df.columns.drop(ohlc_cols)]
@@ -86,8 +90,7 @@ gc.collect()
     return pdhcat(df_talib, filter(!isnothing, dfs)...)
 end
 
-function TradingFCParameters(shift)
-    tscal = ceil(Int, shift / 100)
+function TradingFCParameters(tscal = 1)
     Dict(
         "abs_energy" => nothing,
         "count_above_mean" => nothing,

@@ -142,22 +142,22 @@ function reloaddata(data)
     loaddata(dst, mode = "r+")
 end
 
-function initdata(dst, eltyp, (F, N, T), feature = nothing)
+function initdata(dst, eltype_, (F, N, T), feature = nothing)
     isfile(dst) && rm(dst)
     feature = something(feature, string.(1:F))
     h5open(dst, "w", "alignment", (0, 8)) do fid
         g_create(fid, "nonarray")
         @showprogress "initdata..." for s in afieldnames(Data)
             if s == :时间戳
-                d_zeros(fid, string(s), Float64, N, T)
+                d_zeros(fid, string(s), Float64, (N, T))
             elseif s == :代码
                 fid["代码"] = [MLString{8}(string(n)) for n in 1:N, t in 1:T]
             elseif s == :涨停 || s == :跌停 || s == :交易池
-                d_zeros(fid, string(s), UInt8, N, T)
+                d_zeros(fid, string(s), UInt8, (N, T))
             elseif s == :特征
-                d_zeros(fid, string(s), eltyp, F, N, T)
+                d_zeros(fid, string(s), eltype_, (F, N, T))
             else
-                d_zeros(fid, string(s), Float32, N, T)
+                d_zeros(fid, string(s), Float32, (N, T))
             end
         end
         fid["交易池"][:, :] = 1
@@ -327,13 +327,13 @@ function getlabel(data::Data, h::Int)
     N, T = size(data)
     l = zeros(Float32, N, T)
     r = zeros(Float32, N)
-    for t in T:-1:(T - h + 1), n in 1:N
-        r[n] += 涨幅[n, t]
+    for t in (T - 1):-1:(T - h), n in 1:N
+        r[n] += 涨幅[n, t + 1]
         l[n, t] = r[n]
     end
-    @showprogress "getlabel..." for t in (T - h):-1:1
+    @showprogress "getlabel..." for t in (T - h - 1):-1:1
         for n in 1:N
-            r[n] += 涨幅[n, t] - 涨幅[n, t + h]
+            r[n] += 涨幅[n, t + 1] - 涨幅[n, t + h + 1]
             l[n, t] = r[n]
         end
     end

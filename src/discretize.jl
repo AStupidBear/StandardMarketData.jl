@@ -12,10 +12,10 @@ end
 
 discretize!(a...; ka...) = discretize(a...; inplace = 1, ka...)
 
-function discretize(x::AbstractArray)
+function discretize(x::AbstractArray; ka...)
     h5 = randstring() * ".h5"
     h5write(h5, "x", x)
-    discretize!(h5, name = "x")
+    discretize!(h5; name = "x", ka...)
     x8 = h5read(h5, "x")
     bin_edges = h5read(h5, "bin_edges")
     rm(h5, force = true)

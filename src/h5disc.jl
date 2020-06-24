@@ -80,7 +80,7 @@ if MPI.Comm_rank(MPI.COMM_WORLD) == 0
                 o_copy(fid[dset], fid′, dset)
             end
         end
-        d_zeros(fid′, name, UInt8, size(x)...)
+        d_zeros(fid′, name, UInt8, size(x))
     end
 end
 MPI.Barrier(MPI.COMM_WORLD)

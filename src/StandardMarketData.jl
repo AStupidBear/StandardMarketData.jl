@@ -11,7 +11,7 @@ import StatsBase
 
 export Data, loaddata, savedata, reloaddata
 export nfeats, ncodes, nticks, ndays, nticksperday
-export discretize!, discretize, undiscretize, downsample, featnames
+export discretize!, discretize, undiscretize, period, downsample, featnames
 export getfeat, getfeats, @uncol, dropfeats, keepfeats, getcats, keepcats
 export datespan, firstdate, lastdate, setcomm, setpool
 export epochsof, datetimesof, datesof, codesof, parsefreq
