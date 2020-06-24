@@ -623,26 +623,3 @@ function Mmap.sync!(data::Data)
         Mmap.sync!(getfield(data, s))
     end
 end
-
-# function reweight_pnl(data)
-#     date = lastdayofmonth.(unix2datetime.(data.时间戳))
-#     # pnl = get(记忆收益率, hash(data.时间戳)) do
-#     #     abs.(getlabel(data, "4H"))
-#     # end
-#     pnl = abs.(getlabel(data, "4H"))
-#     df = DataFrame("date" => vec(date), "pnl" => vec(pnl))
-#     df.set_index("date", inplace = true)
-#     df["pnl_avg"] = df["pnl"].groupby("date").mean()
-#     w = (1 / df["pnl_avg"].abs()).values
-#     clamp!(w, quantile(w, (0.05, 0.95))...)
-#     reshape(divavg!(w), size(data))
-# end
-
-# function reweight_time(data, scale = "2Y")
-#     ts = data.时间戳
-#     λ = 1 / parsefreq(scale)
-#     ti, tf = extrema(ts)
-#     divavg!(@. exp(λ * (ts - tf)))
-# end
-
-# reweight(data) = reweight_time(data) .* reweight_pnl(data)
