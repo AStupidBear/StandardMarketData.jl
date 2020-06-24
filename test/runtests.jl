@@ -91,5 +91,5 @@ if !isnothing(Sys.which("mpiexec"))
     x = data.特征
     x8, bin_edges = discretize(x, host = "localhost")
     x′ = undiscretize(x8, bin_edges)
-    @test mean(abs, x .- x′) < 0.01
+    @test mean(abs, x .- x′) < 0.02
 end
