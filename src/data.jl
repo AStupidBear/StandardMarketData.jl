@@ -80,7 +80,7 @@ const _edgemap = Dict{String, Vector{Float32}}()
 
 const _sourcemap = Dict{UInt, String}()
 
-sourceof(x) = get(_sourcemap, hash(x), nothing)
+sourceof(x) = get(_sourcemap, objectid(x), nothing)
 
 function _loaddata(src; mode = "r", ti = nothing, tf = nothing, ka...)
     if endswith(src, ".h5")
@@ -95,13 +95,13 @@ function _loaddata(src; mode = "r", ti = nothing, tf = nothing, ka...)
         data = bsload(src, Data; ka...)
     end
     if isnothing(ti) && isnothing(tf)
-        _sourcemap[hash(data)] = src
+        _sourcemap[objectid(data)] = src
         return data
     else
         ti = something(ti, "20000101")
         tf = something(tf, "20501231")
         data′ = @view data[:, ti:tf]
-        _sourcemap[hash(data′)] = src
+        _sourcemap[objectid(data′)] = src
         return data′
     end
 end
