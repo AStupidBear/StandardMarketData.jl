@@ -80,16 +80,16 @@ to_data(df, "tmp.h5")
 @test next_tradetime(DateTime("2018-01-01T13:15"), "000001") == DateTime("2018-01-01T13:15:00")
 @test next_tradetime(DateTime("2018-01-01T15:15"), "000001") == DateTime("2018-01-02T09:30:00")
 
-if !isnothing(Sys.which("mpiexec"))
-    x = data.特征
-    x8, bin_edges = discretize(x, host = "localhost")
-    x′ = undiscretize(x8, bin_edges)
-    @test mean(abs, x .- x′) < 0.01
-end
-
 extract_tsfresh_feats(to_df(data), shifts = ["10H"], horizon = "3H")
 
 df = DataFrame("code" => vec(代码), "close" => vec(价格))
 df["high"] = df["low"] = df["open"] = df["close"]
 df["volume"] = rand(N * T)
 extract_talib_feats(df, "code")
+
+if !isnothing(Sys.which("mpiexec"))
+    x = data.特征
+    x8, bin_edges = discretize(x, host = "localhost")
+    x′ = undiscretize(x8, bin_edges)
+    @test mean(abs, x .- x′) < 0.01
+end
