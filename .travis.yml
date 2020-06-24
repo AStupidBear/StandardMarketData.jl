@@ -29,3 +29,9 @@ addons:
       - python3
       - python3-pip
       - python3-setuptools
+      - libhdf5-serial-dev
+before_install:
+  - pip3 install --user --upgrade pip
+  - pip --version
+  - pip install --user pandas
+  - pip install --user tables
