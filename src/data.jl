@@ -15,7 +15,7 @@ mutable struct Data{F <: AbstractArray,
     跌停::L
     代码::C′
     时间戳::T
-    价格::P
+    最新价::P
     交易池::P′
 end
 
@@ -180,7 +180,7 @@ function Base.show(io::IO, data::Data)
     @printf(io, "跌停比例: %.2g\n", mean(data.跌停))
     ts = Dates.format.(unix2date.(data.时间戳[[1;end]]), "yymmdd")
     @printf(io, "日期范围: %s/%s\t", ts...)
-    @printf(io, "价格范围: %.3g/%.3g\n", extrema(data.价格)...)
+    @printf(io, "价格范围: %.3g/%.3g\n", extrema(data.最新价)...)
     @printf(io, "涨幅范围: %.2g/%.2g\n", extrema(data.涨幅)...)
     compact && return
     header, stats = String[], Array{String}[]
@@ -487,7 +487,7 @@ function pivot(data::Data, dst = "pivot.h5"; meta_only = false)
                     dest[n′, t′] = src[n, t]
                 end
             end
-            s == :价格 && Threads.@threads for t′ in 2:T′
+            s == :最新价 && Threads.@threads for t′ in 2:T′
                 for n′ in 1:N′
                     if iszero(dest[n′, t′])
                         dest[n′, t′] = dest[n′, t′ - 1]
@@ -495,7 +495,7 @@ function pivot(data::Data, dst = "pivot.h5"; meta_only = false)
                 end
                 next!(p)
             end
-            s == :价格 && Threads.@threads for t′ in (T′ - 1):-1:1
+            s == :最新价 && Threads.@threads for t′ in (T′ - 1):-1:1
                 for n′ in 1:N′
                     if iszero(dest[n′, t′])
                         dest[n′, t′] = dest[n′, t′ + 1]
