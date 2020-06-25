@@ -84,10 +84,12 @@ to_data(df, "tmp.h5")
 
 extract_tsfresh_feats(to_df(data), shifts = ["10H"], horizon = "3H")
 
-df = DataFrame("code" => vec(代码), "close" => vec(价格))
-df["high"] = df["low"] = df["open"] = df["close"]
-df["volume"] = rand(N * T)
-extract_talib_feats(df, "code")
+if !Sys.iswindows()
+    df = DataFrame("code" => vec(代码), "close" => vec(价格))
+    df["high"] = df["low"] = df["open"] = df["close"]
+    df["volume"] = rand(N * T)
+    extract_talib_feats(df, "code")
+end
 
 if !isnothing(Sys.which("mpiexec"))
     x = data.特征
