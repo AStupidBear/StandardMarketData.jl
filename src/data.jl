@@ -82,9 +82,9 @@ const _sourcemap = Dict{UInt, String}()
 
 sourceof(x) = get(_sourcemap, objectid(x), nothing)
 
-function _loaddata(src; mode = "r", ti = nothing, tf = nothing, ka...)
+function _loaddata(src; fload = nothing, ti = nothing, tf = nothing, ka...)
     if endswith(src, ".h5")
-        data = h5load(src, Data; mode = mode, ka...)
+        data = isnothing(fload) ? h5load(src, Data; ka...) : float(src; ka...)
         if "bin_edges" ∈ h5open(names, src)
             bin_edges = h5read(src, "bin_edges")
             for (c, f) in data.特征名
