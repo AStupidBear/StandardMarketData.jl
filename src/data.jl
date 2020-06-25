@@ -1,22 +1,23 @@
-mutable struct Data{F <: AbstractArray,
-                    R <: AbstractMatrix,
-                    C <: AbstractMatrix,
-                    L <: AbstractMatrix,
-                    C′ <: AbstractMatrix,
-                    T <: AbstractMatrix,
-                    P <: AbstractMatrix,
-                    P′ <: AbstractMatrix}
+mutable struct Data{
+    A <: AbstractArray{T, 3} where T, 
+    B <: AbstractMatrix, C <: AbstractMatrix, 
+    D <: AbstractMatrix, E <: AbstractMatrix, 
+    F<: AbstractMatrix, G <: AbstractMatrix, 
+    H <: AbstractMatrix, I <: AbstractMatrix, 
+    J <: AbstractMatrix, K <: AbstractMatrix
+    }
     特征名::Dict{String, Int}
-    特征::F
-    涨幅::R
-    买手续费率::C
-    卖手续费率::C
-    涨停::L
-    跌停::L
-    代码::C′
-    时间戳::T
-    最新价::P
-    交易池::P′
+    特征::A
+    涨幅::B
+    时间戳::C
+    代码::D
+    最新价::E
+    买1价::F
+    卖1价::G
+    手续费率::H
+    涨停::I
+    跌停::J
+    交易池::K
 end
 
 Base.:(==)(x::Data, y::Data) = all(s -> getfield(x, s) == getfield(y, s), fieldnames(Data))
@@ -184,7 +185,7 @@ function Base.show(io::IO, data::Data)
     @printf(io, "涨幅范围: %.2g/%.2g\n", extrema(data.涨幅)...)
     compact && return
     header, stats = String[], Array{String}[]
-    for f in ["涨幅", "买手续费率", "卖手续费率"]
+    for f in ("涨幅", "手续费率")
         x = vec(getfield(data, Symbol(f)))
         s = StatsBase.summarystats(x)
         push!(header, f)
@@ -342,9 +343,7 @@ end
 
 function setcomm(data, c)
     dict = to_dict(data)
-    for s in [:买手续费率,  :卖手续费率]
-        dict[s] = fill(Float32(c), size(data))
-    end
+    dict[:手续费率] = fill(Float32(c), size(data))
     to_struct(Data, dict)
 end
 
