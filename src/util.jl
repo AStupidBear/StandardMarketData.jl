@@ -251,6 +251,12 @@ function to_category(x)
     return sr
 end
 
+function to_category(x::AbstractArray{<:MLString})
+    sr = pd.Series(x).astype("category")
+    sr.cat.categories = sr.cat.categories.str.decode("utf-8", "ignore")
+    return sr
+end
+
 @generated function subslice(x::AbstractArray{T, N}) where {T, N}
     inds = ntuple(i -> (:), N - 1)
     :($inds)
