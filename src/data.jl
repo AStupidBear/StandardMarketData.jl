@@ -239,7 +239,8 @@ function downsample(data::Data, ts::AbstractArray{Int}; average = false)
     F, N, T = size(data.特征)
     fill!(data′.涨幅, 0)
     @showprogress for t′ in 1:(length(ts) - 1)
-        @inbounds for t in ts[t′]:(ts[t′ + 1] - 1), n in 1:N
+        t⁻ = t′ == 1 ? 0 : ts[t′ - 1]
+        @inbounds for t in (t⁻ + 1):ts[t′], n in 1:N
             data′.涨幅[n, t′] += data.涨幅[n, t]
         end
     end
@@ -247,11 +248,12 @@ function downsample(data::Data, ts::AbstractArray{Int}; average = false)
         copyto!(data′.涨幅, sum(data.涨幅, dims = 2))
     end
     !average && return data′
-    data′.特征[:, :, 2:(end - 1)] .= 0
-    @showprogress for t′ in 2:(length(ts) - 1)
-        freq = ts[t′] - ts[t′ - 1]
-        @inbounds for t in (ts[t′ - 1] + 1):ts[t′], n in 1:N, f in 1:F
-            data′.特征[f, n, t′] += data.特征[f, n, t] / freq
+    fill!(data′.特征, 0)
+    @showprogress for t′ in 1:(length(ts) - 1)
+        t⁻ = t′ == 1 ? 0 : ts[t′ - 1]
+        Δt = ts[t′] - t⁻
+        @inbounds for t in (t⁻ + 1):ts[t′], n in 1:N, f in 1:F
+            data′.特征[f, n, t′] += data.特征[f, n, t] / Δt
         end
     end
     return data′
