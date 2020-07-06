@@ -26,7 +26,7 @@ function discretize!(x8, x)
     prob′ = range(0, 1, length = 2560 + 1)[2:(end - 1)]
     prog = Progress(size(x, 1), desc = "BinEdges: ")
     for f in 1:size(x, 1)
-        xf = x[f, :]
+        xf = filter(z -> !isnan(z) & !isinf(z), x[f, :])
         sort!(xf, alg = RadixSort)
         v = quantile(xf, prob′, sorted = true)
         v = MPI.Allgather(v, MPI.COMM_WORLD)

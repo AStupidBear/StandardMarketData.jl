@@ -7,6 +7,7 @@ function _extract_tsfresh_feats(column, shift; ka...)
     if df[column].dtype == "uint8"
         df[column] = df[column] / 128 - 1
     end
+    df[column] = df[column].replace([Inf, -Inf], NaN).fillna(0)
     y = pd.read_pickle("y.pkl")["y"]
     if length(y) == length(df)
         df = roll_time_series(df, "代码", nothing, nothing, 1, shift)

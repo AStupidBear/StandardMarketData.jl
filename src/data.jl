@@ -20,7 +20,7 @@ mutable struct Data{
     交易池::K
 end
 
-Base.:(==)(x::Data, y::Data) = all(s -> getfield(x, s) == getfield(y, s), fieldnames(Data))
+Base.:(==)(x::Data, y::Data) = all(s -> isequal(getfield(x, s), getfield(y, s)), fieldnames(Data))
 
 afieldnames(t) = Symbol[fieldname(t, n) for n in 1:fieldcount(t) if fieldtype(t, n) <: AbstractArray]
 
@@ -73,7 +73,7 @@ Base.length(data::Data) = prod(size(data))
 
 Base.lastindex(data::Data, n) = size(data, n)
 
-ndays(data) = sortednunique(unix2date, view(data.时间戳, 1, :))
+ndays(data) = sortednunique(unix2date, filter(!iszero, data.时间戳[1, :]))
 
 nticksperday(data) = nticks(data) ÷ ndays(data)
 
@@ -179,9 +179,8 @@ function Base.show(io::IO, data::Data)
     @printf(io, "交易池比例: %.2g\t", mean(data.交易池))
     @printf(io, "涨停比例: %.2g\t", mean(data.涨停))
     @printf(io, "跌停比例: %.2g\n", mean(data.跌停))
-    ts = Dates.format.(unix2date.(data.时间戳[[1;end]]), "yymmdd")
-    @printf(io, "日期范围: %s/%s\t", ts...)
-    @printf(io, "价格范围: %.3g/%.3g\n", extrema(data.最新价)...)
+    @printf(io, "日期范围: %s/%s\t", Dates.format.(datespan(data), "yymmdd")...)
+    @printf(io, "价格范围: %.3g/%.3g\n", extrema(filter(!iszero, data.最新价))...)
     @printf(io, "涨幅范围: %.2g/%.2g\n", extrema(data.涨幅)...)
     compact && return
     header, stats = String[], Array{String}[]
@@ -192,7 +191,7 @@ function Base.show(io::IO, data::Data)
         push!(stats, split(string(s), '\n')[2:end-1])
     end
     for (f, i) in data.特征名
-        x = vec(data.特征[i, :, :])
+        x = filter(z -> !isnan(z) & !isinf(z), data.特征[i, :, :])
         if any(!iszero, x)
             s = StatsBase.summarystats(x)
         else
@@ -316,11 +315,11 @@ end
 
 Base.split(data::Data, t::String) = @views data["20010101":t], data[t:"30000101"]
 
-datespan(data::Data) = unix2date.(extrema(data.时间戳))
+datespan(data::Data) = (firstdate(data), lastdate(data))
 
-firstdate(data::Data) = unix2date(minimum(data.时间戳))
+firstdate(data::Data) = unix2date(minimum(t -> ifelse(iszero(t), Inf, t), data.时间戳))
 
-lastdate(data::Data) = unix2date(maximum(data.时间戳))
+lastdate(data::Data) = unix2date(maximum(t -> ifelse(iszero(t), -Inf, t), data.时间戳))
 
 getlabel(data::Data, h::String) = getlabel(data, ceil(Int, min(nticks(data), parsefreq(h) / period(data))))
 

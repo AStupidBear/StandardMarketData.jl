@@ -14,6 +14,8 @@ F, N, T = 2, 5, 100
 特征名 = idxmap(string.("f", 1:F))
 特征 = randn(Float32, F, N, T)
 涨幅 = dropdims(mean(特征, dims = 1), dims = 1)
+特征[:, 1:1, 1:3] .= NaN
+特征[:, 2:2, 1:3] .= Inf
 ti, Δt = DateTime(2019, 1, 1), Hour(1)
 时间戳 = range(ti, step = Δt, length = T ÷ 2)
 时间戳 = datetime2unix.(repeat(reshape(时间戳, 1, :), N, 2))
@@ -41,15 +43,15 @@ data["20190101":"20190103"]
 split(data, "20190110")
 
 @uncol f1, f2 = data
-@test isapprox(getfeat(data, r"f1$"), 特征[1, :, :])
-@test getfeats(data, r"f1$") == [特征[1, :, :]]
+@test isapprox(getfeat(data, r"f1$"), 特征[1, :, :], nans = true)
+@test isequal(getfeats(data, r"f1$"), [特征[1, :, :]])
 @test nfeats(dropfeats(data, r"f1$")) == F - 1
 @test nfeats(keepfeats(data, r"f1$")) == 1
 @test nfeats(keepcats(data, r"f1$")) == F
 @test getcats(data) == featnames(data)
 
 df = to_df(data)
-@test df["f1"].values == vec(f1)
+@test isequal(df["f1"].values, vec(f1))
 to_data(df, "tmp.h5")
 @test all(isone, setcomm(data, 1).手续费率)
 @test isempty(setpool(data, "f1"))
@@ -95,5 +97,7 @@ if !isnothing(Sys.which("mpiexec"))
     x = data.特征
     x8, bin_edges = discretize(x, mpiarg = `-n 1`)
     x′ = undiscretize(x8, bin_edges)
-    @test mean(abs, x .- x′) < 0.02
+    @test mean(x .- x′) do z
+        abs(!isnan(z) * !isinf(z) * z)
+    end < 0.02
 end
