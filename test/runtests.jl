@@ -76,7 +76,9 @@ to_data(df, "tmp.h5")
 @test sortednunique([1, 2, 3, 3, 4]) == 4
 @test isempty(rolldata(data, "6M", "6M"))
 
-extract_tsfresh_feats(to_df(data), shifts = ["10H"], horizon = "3H")
+if PandasLite.version() >= v"0.25"
+    extract_tsfresh_feats(to_df(data), shifts = ["10H"], horizon = "3H")
+end
 
 if !Sys.iswindows()
     df = DataFrame("code" => vec(代码), "close" => vec(最新价))
