@@ -72,17 +72,9 @@ to_data(df, "tmp.h5")
 @test str2date("20100101") == Date(2010, 01, 01)
 @test int2unix(20100101) == datetime2unix(DateTime(2010, 01, 01))
 
-@test normalize_code("000001") == "000001.XSHE"
 @test nunique([1, 2, 2, 3]) == 3
 @test sortednunique([1, 2, 3, 3, 4]) == 4
 @test isempty(rolldata(data, "6M", "6M"))
-
-@test next_tradetime(DateTime("2018-01-01T8:50"), "JM") == DateTime("2018-01-01T09:00:00")
-@test next_tradetime(DateTime("2018-01-01T8:50"), "000001") == DateTime("2018-01-01T09:30:00")
-@test next_tradetime(DateTime("2018-01-01T12:00"), "000001") == DateTime("2018-01-01T13:00:00")
-@test next_tradetime(DateTime("2018-01-01T13:30"), "JM") == DateTime("2018-01-01T13:30:00")
-@test next_tradetime(DateTime("2018-01-01T13:15"), "000001") == DateTime("2018-01-01T13:15:00")
-@test next_tradetime(DateTime("2018-01-01T15:15"), "000001") == DateTime("2018-01-02T09:30:00")
 
 extract_tsfresh_feats(to_df(data), shifts = ["10H"], horizon = "3H")
 

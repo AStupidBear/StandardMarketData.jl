@@ -8,17 +8,22 @@ macro staticvar(init)
     end
 end
 
-function normalize_code(code)
-    if occursin(".", code)
-        code = replace(replace(code, "SZA" => "XSHE"), "SHA" => "XSHG")
+macro staticdef(ex)
+    @capture(ex, name_::T_ = val_) || error("invalid @staticvar")
+    ref = Ref{__module__.eval(T)}()
+    set = Ref(false)
+    :($(esc(name)) = if $set[]
+        $ref[]
     else
-        code = lpad(code, 6, "0")
-        code * ifelse(startswith(code, "6"), ".XSHG", ".XSHE")
-    end
+        $ref[] = $(esc(ex))
+        $set[] = true
+        $ref[]
+    end)
 end
 
 unix2date(t) = Date(unix2datetime(t))
 unix2time(t) = Time(unix2datetime(t))
+unix2hour(x) = x % (24 * 3600) / 3600
 
 unix2str8(t) = Dates.format(unix2datetime(t), "yyyymmdd")
 unix2str6(t) = Dates.format(unix2datetime(t), "yymmdd")
@@ -28,46 +33,6 @@ str2unix(str) = datetime2unix(str2datetime(str))
 
 unix2int(t) = parse(Int, unix2str8(t))
 int2unix(i) = str2unix(string(i))
-
-isfutcode(code) = occursin(r"^\D+$", split(code, '.')[1])
-iscommcode(code) = isfutcode(code) && !occursin(r"IF|IH|IC", code)
-
-function next_tradetime(t, code)
-    d, t = Date(t), Time(t)
-    iscomm = iscommcode(code)
-    if t < Time(9, 0) && iscomm
-        t = Time(9, 0)
-    elseif t < Time(9, 30) && !iscomm
-        t = Time(9, 30)
-    elseif Time(10, 15) <= t < Time(10, 30) && iscomm
-        t = Time(10, 30)
-    elseif Time(11, 30) <= t < Time(13, 0) && !iscomm
-        t = Time(13, 0)
-    elseif Time(13, 0) <= t < Time(13, 30) && iscomm
-        t = Time(13, 30)
-    elseif t >= Time(15, 0)
-        t = Time(9, 30)
-        d += Day(1)
-    end
-    t = t + d
-    while true
-        isholiday(t) ? t += Day(1) : return t
-    end
-end
-
-function isholiday(t)
-    holidays = @staticvar DateTime[]
-    if isempty(holidays)
-        chinese_calendar = pyimport("chinese_calendar")
-        for day in keys(chinese_calendar.holidays)
-            push!(holidays, day)
-        end
-    end
-    Dates.issaturday(t) && return true
-    Dates.issunday(t) && return true
-    range = searchsortedfirst(holidays, Date(t))
-    length(range) == 0
-end
 
 function mmap_tempname()
     isdir(".mempool") || mkdir(".mempool")
@@ -131,14 +96,14 @@ function concat_txts(dst, srcs)
     return dst
 end
 
-function catlag(df::DataFrame, by; maxlag = 10)
+function concat_lagged(df::DataFrame, by; maxlag = 10)
     df = pd.concat([df.groupby(by).shift(l).dropna() for l in 0:(maxlag - 1)], axis = 1)
     df.columns = [string(c, '_', l) for l in 0:(maxlag - 1) for c in df.columns]
     df.reset_index(inplace = true, drop = true)
     return df
 end
 
-function catlag(x; maxlag = 10)
+function concat_lagged(x; maxlag = 10)
     F, N, T = size(x)
     x′ = fill!(similar(x, maxlag * F, N, T), 0)
     for t in 1:T, n in 1:N, f in 1:F
@@ -251,22 +216,26 @@ function to_category(x)
     return sr
 end
 
-function to_category(x::AbstractArray{<:MLString})
-    sr = pd.Series(x).astype("category")
-    sr.cat.categories = sr.cat.categories.str.decode("utf-8", "ignore")
-    return sr
+if PandasLite.version() >= v"0.25"
+    function to_category(x::AbstractArray{<:MLString})
+        sr = pd.Series(x).astype("category")
+        sr.cat.categories = sr.cat.categories.str.decode("utf-8", "ignore")
+        return sr
+    end
 end
 
 @generated function subslice(x::AbstractArray{T, N}) where {T, N}
     inds = ntuple(i -> (:), N - 1)
     :($inds)
 end
-
 subslice(x) = ntuple(i -> (:), ndims(x) - 1)
 
 cview(a, i) = view(a, subslice(a)..., i)
-
+cget(a, i) = getindex(a, subslice(a)..., i)
 ccount(a) = (ndims(a) == 1 ? length(a) : size(a, ndims(a)))
+
+indbatch(x, b, offset = 0) = (C = ccount(x); min(i + offset, C):min(i + offset + b -1, C) for i in 1:b:C)
+minibatch(x, batchsize) = [cview(x, ind) for ind in indbatch(x, batchsize)]
 
 function Base.split(x::AbstractArray, n)
     cview(x, 1:n), cview(x, (n + 1):ccount(x))
