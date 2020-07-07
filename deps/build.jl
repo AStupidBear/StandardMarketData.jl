@@ -5,7 +5,7 @@ ENV["TA_INCLUDE_PATH"] = joinpath(DEPOT_PATH[1], "talib/include")
 ENV["JULIA_DEPOT_PATH"] = DEPOT_PATH[1]
 
 run(`$python -m pip install --upgrade pip`)
-run(`$python -m pip install --upgrade tsfresh pyarrow "pandas<=0.25.3,!=0.24"`)
+run(`$python -m pip install "pandas<=0.25.3,!=0.24" tsfresh pyarrow`)
 if !Sys.iswindows()
     run(`bash talib-install.sh`)
     run(`$python -m pip --no-cache-dir install TA-Lib`)
