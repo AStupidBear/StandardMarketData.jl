@@ -29,7 +29,7 @@ data = Data(特征名, 特征, 涨幅, 时间戳, 代码, 最新价, 买1价, �
 savedata("test.h5", data)
 @test data == reloaddata(data)
 @test nticks(downsample(data, "5H")) == T ÷ 5
-@test size(pivot(data)[1]) == (2N, T ÷ 2)
+Sys.iswindows() || @test size(pivot(data)[1]) == (2N, T ÷ 2)
 @test isapprox(SMD.getlabel(data, 5)[:, 10], sum(涨幅[:, 11:15], dims = 2))
 
 @test nfeats(data) == F
