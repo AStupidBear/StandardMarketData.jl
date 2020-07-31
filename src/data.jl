@@ -200,8 +200,8 @@ function Base.show(io::IO, data::Data)
         push!(header, string(f))
         push!(stats, split(string(s), '\n')[2:end-1])
     end
-    for (h, stat) in zip(Iterators.partition(header, 4), Iterators.partition(stats, 4))
-        print_header_stats(io, h, stat)
+    for (header′, stats′) in zip(Iterators.partition(header, 4), Iterators.partition(stats, 4))
+        print_header_stats(io, header′, stats′)
     end
 end
 
@@ -216,7 +216,7 @@ function print_header_stats(io, header, stats)
     for r in 1:length(stats[1])
         print(io, '\n')
         for c in 1:length(stats)
-            print(io, stats[c][r], '\t')
+            print(io, stats[c][min(r, end)], '\t')
         end
     end
 end
