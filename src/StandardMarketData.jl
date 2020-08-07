@@ -19,7 +19,7 @@ export epochsof, datetimesof, datesof, codesof, parsefreq
 export concat, pivot, rolldata, to_df, to_data, sourceof, isdatafile
 export unix2date, unix2time, unix2hour, unix2str8, unix2str6, unix2int
 export str2date, str2datetime, str2unix, int2unix
-export to_dict, to_struct, idxmap
+export to_dict, to_struct, idxmap, pct_change
 export to_category, from_category
 export sortedunique, sortednunique, nunique
 export extract_talib_feats, extract_tsfresh_feats

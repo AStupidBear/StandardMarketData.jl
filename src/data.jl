@@ -321,25 +321,26 @@ firstdate(data::Data) = unix2date(minimum(t -> ifelse(iszero(t), Inf, t), data.�
 
 lastdate(data::Data) = unix2date(maximum(t -> ifelse(iszero(t), -Inf, t), data.时间戳))
 
-getlabel(data::Data, h::String) = getlabel(data, ceil(Int, min(nticks(data), parsefreq(h) / period(data))))
+pct_change(data::Data, h::String) = pct_change(data, ceil(Int, min(nticks(data), parsefreq(h) / period(data))))
 
-function getlabel(data::Data, h::Int)
-    @unpack 涨幅, 代码 = data
-    h > nticks(data) && return 涨幅
-    N, T = size(data)
-    l = zeros(Float32, N, T)
+pct_change(data::Data, h::Int) = pct_change(data.涨幅, h)
+
+function pct_change(v, h)
+    h = ceil(Int, h)
+    N, T = size(v)
+    chg = zeros(Float32, N, T)
     r = zeros(Float32, N)
-    for t in (T - 1):-1:(T - h), n in 1:N
-        r[n] += 涨幅[n, t + 1]
-        l[n, t] = r[n]
+    for t in T:-1:(T - h + 1), n in 1:N
+        r[n] += v[n, t]
+        chg[n, t - 1] = r[n]
     end
-    @showprogress "getlabel..." for t in (T - h - 1):-1:1
+    for t in (T - h):-1:2
         for n in 1:N
-            r[n] += 涨幅[n, t + 1] - 涨幅[n, t + h + 1]
-            l[n, t] = r[n]
+            r[n] += v[n, t] - v[n, t + h]
+            chg[n, t - 1] = r[n]
         end
     end
-    return l
+    return chg
 end
 
 function setcomm(data, c)
