@@ -317,9 +317,9 @@ Base.split(data::Data, t::String) = @views data["20010101":t], data[t:"30000101"
 
 datespan(data::Data) = (firstdate(data), lastdate(data))
 
-firstdate(data::Data) = unix2date(minimum(t -> ifelse(iszero(t), Inf, t), data.时间戳))
+firstdate(data::Data) = unix2date(minimum(t -> ifelse(iszero(t) | isnan(t), Inf, t), data.时间戳))
 
-lastdate(data::Data) = unix2date(maximum(t -> ifelse(iszero(t), -Inf, t), data.时间戳))
+lastdate(data::Data) = unix2date(maximum(t -> ifelse(iszero(t) | isnan(t), -Inf, t), data.时间戳))
 
 pct_change(data::Data, h::String) = pct_change(data, ceil(Int, min(nticks(data), parsefreq(h) / period(data))))
 
