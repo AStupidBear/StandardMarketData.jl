@@ -61,7 +61,7 @@ function extract_talib_feats(df, bycol = "code"; keep_columns = [])
                 ["APO", "MACD", "MACDEXT", "MACDFIX", "MINUS_DM", "MOM", "PLUS_DM"];
                 ["TRANGE", "ATR", "LINEARREG", "LINEARREG_INTERCEPT", "STDDEV", "TSF"]]
     groupfuncs = [(g, f) for (g, fs) in get_function_groups() for f in fs]
-    dfs = @showprogress pmap(groupfuncs) do (g, f)
+    dfs = @showprogress 10 pmap(groupfuncs) do (g, f)
         g = split(g, ' ')[1]
         g == "Math" && return
         f == "MAVP" && return

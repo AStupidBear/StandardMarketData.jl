@@ -86,7 +86,7 @@ function concat_txts(dst, srcs)
     header = hasheader(srcs[1])
     open(dst, "w") do fid
         header && println(fid, readline(srcs[1]))
-        @showprogress dst for src in srcs
+        @showprogress 10 dst for src in srcs
             open(src, "r") do f
                 header && readline(f)
                 write(fid, read(f))
@@ -119,7 +119,7 @@ function read_hdf5(src; columns = nothing, mmaparrays = true)
     df = DataFrame()
     h5open(src, "r+") do fid
         columns = something(columns, names(fid))
-        @showprogress "read_hdf5..." for c in columns ∩ names(fid)
+        @showprogress 10 "read_hdf5..." for c in columns ∩ names(fid)
             dset = fid[c]
             if Sys.iswindows() || !mmaparrays || !ismmappable(dset)
                 df[c] = read(dset)
@@ -134,7 +134,7 @@ end
 function to_hdf5(df, dst)
     isfile(dst) && rm(dst)
     h5open(dst, "w") do fid
-        @showprogress "to_hdf5..." for c in df.columns
+        @showprogress 10 "to_hdf5..." for c in df.columns
             fid[c] = Array(df[c])
         end
     end

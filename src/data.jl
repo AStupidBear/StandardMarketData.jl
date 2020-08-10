@@ -108,7 +108,7 @@ function _loaddata(src; fload = nothing, ti = nothing, tf = nothing, ka...)
 end
 
 function loaddata(srcs::AbstractArray, dim = -1; ka...)
-    datas = @showprogress "loaddata..." map(srcs) do src
+    datas = @showprogress 10 "loaddata..." map(srcs) do src
         _loaddata(src; ka...)
     end
     length(srcs) == 1 && return datas[1]
@@ -148,7 +148,7 @@ function initdata(dst, eltype_, (F, N, T), feature = nothing)
     feature = something(feature, string.(1:F))
     h5open(dst, "w", "alignment", (0, 8)) do fid
         g_create(fid, "nonarray")
-        @showprogress "initdata..." for s in afieldnames(Data)
+        @showprogress 10 "initdata..." for s in afieldnames(Data)
             if s == :时间戳
                 d_zeros(fid, string(s), Float64, (N, T))
             elseif s == :代码
@@ -237,7 +237,7 @@ function downsample(data::Data, ts::AbstractArray{Int}; average = false)
     data′ = data[:, ts]
     F, N, T = size(data.特征)
     fill!(data′.涨幅, 0)
-    @showprogress for t′ in 1:(length(ts) - 1)
+    @showprogress 10 for t′ in 1:(length(ts) - 1)
         t⁻ = t′ == 1 ? 0 : ts[t′ - 1]
         @inbounds for t in (t⁻ + 1):ts[t′], n in 1:N
             data′.涨幅[n, t′] += data.涨幅[n, t]
@@ -248,7 +248,7 @@ function downsample(data::Data, ts::AbstractArray{Int}; average = false)
     end
     !average && return data′
     fill!(data′.特征, 0)
-    @showprogress for t′ in 1:(length(ts) - 1)
+    @showprogress 10 for t′ in 1:(length(ts) - 1)
         t⁻ = t′ == 1 ? 0 : ts[t′ - 1]
         Δt = ts[t′] - t⁻
         @inbounds for t in (t⁻ + 1):ts[t′], n in 1:N, f in 1:F
@@ -444,7 +444,7 @@ function pivot(data::Data, dst = "pivot.h5"; meta_only = false)
     @unpack 代码, 时间戳 = data
     codemap = Dict(reverse.(enumerate(codes)))
     epochmap = Dict(reverse.(enumerate(epochs)))
-    @showprogress "pivot.index" for t in 1:T, n in 1:N
+    @showprogress 10 "pivot.index" for t in 1:T, n in 1:N
         n′ = codemap[代码[n, t]]
         t′ = epochmap[时间戳[n, t]]
         index[n, t] = (n′, t′)
@@ -534,7 +534,7 @@ end
 
 function to_df(data::Data; columns = nothing, meta_only = false, cnvtdate = false)
     df = DataFrame()
-    @showprogress "to_df..." for s in afieldnames(Data)
+    @showprogress 10 "to_df..." for s in afieldnames(Data)
         x = vec(getfield(data, s))
         !isnothing(columns) && string(s) ∉ columns && continue
         if s == :代码
@@ -570,7 +570,7 @@ function _to_data(df, dst; ncode = 0)
     @assert N * T == length(df)
     dst = initdata(dst, Float32, (F, N, T), featcols(df))
     h5open(dst, "r+") do fid
-        @showprogress "to_data.meta..." for c in metacols(df)
+        @showprogress 10 "to_data.meta..." for c in metacols(df)
             if c == "时间戳" && df[c].dtype.kind == "M"
                 x = df[c].astype("int").div(1e9).values
             elseif c == "代码"
@@ -584,7 +584,7 @@ function _to_data(df, dst; ncode = 0)
         fid["跌停"][:, end] = 0
         Δt = 1024^3 ÷ (4 * F * N)
         rows = LinearIndices((1:N, 1:T))
-        @showprogress "to_data.fea..." for t in 1:Δt:T
+        @showprogress 10 "to_data.fea..." for t in 1:Δt:T
             ti, tf = t, min(t + Δt - 1, T)
             ri, rf = rows[1, ti], rows[end, tf]
             slc = df.loc[(ri - 1):(rf - 2), featcols(df)]
