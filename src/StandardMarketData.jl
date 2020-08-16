@@ -37,5 +37,6 @@ include("data.jl")
 include("util.jl")
 include("feature.jl")
 include("discretize.jl")
+include("array.jl")
 
 end
