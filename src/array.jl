@@ -41,6 +41,9 @@ function concatenate(xs::Vector{<:AbstractArray{T, N}}; dims = -1) where {T, N}
     return xc
 end
 
+cconcatenate(xs) = concatenate(xs, dims = ndims(xs[1]))
+rconcatenate(xs) = concatenate(xs, dims = 1)
+
 stack(xs; dims) = concatenate(unsqueeze.(xs, dims = dims), dims = dims)
 unstack(xs; dims) = [selectdim(xs, dims, i) for i in 1:size(xs, dims)]
 
