@@ -22,19 +22,23 @@ rget(a, i) = getindex(a, i, subslice(a)...)
 cset!(a, x, i) = setindex!(a, x, subslice(a)..., i)
 rset!(a, x, i) = setindex!(a, x, i, subslice(a)...)
 
-unsqueeze(xs, dim) = reshape(xs, (size(xs)[1:dim - 1]..., 1, size(xs)[dim:end]...))
+unsqueeze(x; dims) = reshape(x, ntuple(d -> d == dims ? 1 : d < dims ? size(x, d) : size(x, d - 1), Val(ndims(x) + 1)))
 
 function concatenate(xs::Vector{<:AbstractArray{T, N}}; dims = -1) where {T, N}
-    ysize = ntuple(i -> i != dim ? size(first(xs), i) : sum(size(x, dim) for x in xs), Val(N))
-    y = zeros(T, ysize)
-    pos = 0
-    for x in xs
-        slice = (pos + 1):(pos + size(x, dim))
-        inds = ntuple(@closure(i -> i != dim ? (1:size(y, i)) : slice), Val(N))
-        copyto!(view(y, inds...), x)
-        pos += size(x, dim)
+    shape = ntuple(Val(N)) do d
+        d != dims ? size(xs[1], d) :
+        sum(size.(xs, dims))
     end
-    return y
+    xc, i = zeros(T, shape), 0
+    for x in xs
+        is = ntuple(Val(N)) do d
+            d != dims ? (1:shape[d]) :
+            (i + 1):(i + size(x, dims))
+        end
+        copyto!(view(xc, is...), x)
+        i += size(x, dims)
+    end
+    return xc
 end
 
 stack(xs; dims) = concatenate(unsqueeze.(xs, dims = dims), dims = dims)
