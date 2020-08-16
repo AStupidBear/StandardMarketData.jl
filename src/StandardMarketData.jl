@@ -23,8 +23,13 @@ export to_dict, to_struct, idxmap, pct_change
 export to_category, from_category
 export sortedunique, sortednunique, nunique
 export extract_talib_feats, extract_tsfresh_feats
-export cview, cget, ccount, indbatch, minibatch
 export SMD, ⧶, @staticvar, @staticdef
+
+export creshape, rreshape, csize, rsize, ccount, rcount
+export cview, rview, cget, rget, cset!, rset!
+export concatenate, cconcatenate, rconcatenate
+export unsqueeze, stack, unstack, cstack, rstack
+export colvec, rowvec, indbatch, minibatch, splat
 
 const SMD = StandardMarketData
 

@@ -195,8 +195,6 @@ function parsefreq(freq::String)
     end
 end
 
-splat(list) = [item for sublist in list for item in (isa(sublist, AbstractArray) ? sublist : [sublist])]
-
 idxmap(x) = Dict(zip(x, axes(x, 1)))
 
 ⧶(x, y) = x / y
@@ -222,23 +220,6 @@ if PandasLite.version() >= v"0.25"
         sr.cat.categories = sr.cat.categories.str.decode("utf-8", "ignore")
         return sr
     end
-end
-
-@generated function subslice(x::AbstractArray{T, N}) where {T, N}
-    inds = ntuple(i -> (:), N - 1)
-    :($inds)
-end
-subslice(x) = ntuple(i -> (:), ndims(x) - 1)
-
-cview(a, i) = view(a, subslice(a)..., i)
-cget(a, i) = getindex(a, subslice(a)..., i)
-ccount(a) = (ndims(a) == 1 ? length(a) : size(a, ndims(a)))
-
-indbatch(x, b, offset = 0) = (C = ccount(x); min(i + offset, C):min(i + offset + b -1, C) for i in 1:b:C)
-minibatch(x, batchsize) = [cview(x, ind) for ind in indbatch(x, batchsize)]
-
-function Base.split(x::AbstractArray, n)
-    cview(x, 1:n), cview(x, (n + 1):ccount(x))
 end
 
 Base.dropdims(f, A::AbstractArray; dims) = dropdims(f(A, dims = dims), dims = dims)

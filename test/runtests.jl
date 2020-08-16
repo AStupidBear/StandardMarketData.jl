@@ -95,3 +95,12 @@ if !isnothing(Sys.which("mpiexec"))
         abs(!isnan(z) * !isinf(z) * z)
     end < 0.02
 end
+
+# foo(x) = unsqueeze(x; dims = 2)
+# x = rand(10, 10)
+# @code_warntype foo(x)
+
+# xs = [rand(10, 10) for i in 1:2]
+# concatenate(xs, dims = 1)
+# foo(xs) = concatenate(xs, dims = 1)
+# foo(xs); @code_warntype foo(xs)
