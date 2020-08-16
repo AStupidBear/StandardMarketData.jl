@@ -603,15 +603,6 @@ metacols(df) = sort!(setdiff(df.columns, featcols(df)))
 
 split_metafeat(df) = df[metacols(df)], df[featcols(df)]
 
-function isdatafile(h5)
-    try
-        loaddata(h5)
-        return true
-    catch e
-        return false
-    end
-end
-
 Base.eltype(data::Data) = eltype(data.特征)
 
 function Base.similar(data::Data, dims, dst = randstring())
