@@ -146,7 +146,7 @@ end
 function initdata(dst, eltype_, (F, N, T), feature = nothing)
     isfile(dst) && rm(dst)
     feature = something(feature, string.(1:F))
-    h5open(dst, "w", "alignment", (0, 8)) do fid
+    h5open(dst, "w") do fid
         g_create(fid, "nonarray")
         @showprogress 10 "initdata..." for s in afieldnames(Data)
             if s == :时间戳
