@@ -229,3 +229,5 @@ function arr2rng(x)
     r = UnitRange(extrema(x)...)
     r == x ? r : x
 end
+
+isna(x) = iszero(x) | isnan(x)

@@ -223,7 +223,7 @@ end
 
 _diff(x) = length(x) > 1 ? diff(x) : [zero(eltype(x))]
 
-period(data) = median(_diff(view(data.时间戳, 1, :)))
+period(data) = median(median(_diff(filter(!isna, data.时间戳[n, :]))) for n in 1:size(data, 1))
 
 downsample(data::Data, freq::String; ka...) =
     downsample(data, round(Int, min(nticks(data), parsefreq(freq) / period(data))); ka...)
@@ -317,9 +317,9 @@ Base.split(data::Data, t::String) = @views data["20010101":t], data[t:"30000101"
 
 datespan(data::Data) = (firstdate(data), lastdate(data))
 
-firstdate(data::Data) = unix2date(minimum(t -> ifelse(iszero(t) | isnan(t), Inf, t), data.时间戳))
+firstdate(data::Data) = unix2date(minimum(t -> ifelse(isna(t), Inf, t), data.时间戳))
 
-lastdate(data::Data) = unix2date(maximum(t -> ifelse(iszero(t) | isnan(t), -Inf, t), data.时间戳))
+lastdate(data::Data) = unix2date(maximum(t -> ifelse(isna(t), -Inf, t), data.时间戳))
 
 pct_change(data::Data, h::String) = pct_change(data, ceil(Int, min(nticks(data), parsefreq(h) / period(data))))
 
