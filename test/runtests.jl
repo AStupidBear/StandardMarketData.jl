@@ -60,8 +60,8 @@ to_data(df, "tmp.h5")
 @test lastdate(data) == maximum(unix2date, 时间戳)
 @test datespan(data) == (firstdate(data), lastdate(data))
 
-@test ncodes(concat([data, data], 1)) == 2N
-@test nticks(concat([data, data], 2)) == 2T
+@test ncodes(concat([data, data], dims = 1)) == 2N
+@test nticks(concat([data, data], dims = 2)) == 2T
 
 @test epochsof(data) == unique(时间戳)
 @test datetimesof(data) == unix2datetime.(epochsof(data))

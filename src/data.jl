@@ -107,12 +107,12 @@ function _loaddata(src; fload = nothing, ti = nothing, tf = nothing, ka...)
     end
 end
 
-function loaddata(srcs::AbstractArray, dim = -1; ka...)
+function loaddata(srcs::AbstractArray; dims = -1, ka...)
     datas = @showprogress 10 "loaddata..." map(srcs) do src
         _loaddata(src; ka...)
     end
     length(srcs) == 1 && return datas[1]
-    concat(filter(!isempty, datas), dim)
+    concat(filter(!isempty, datas); dims)
 end
 
 function loaddata(pattern, a...; ka...)
@@ -393,21 +393,13 @@ function isaligned(datas)
     return true
 end
 
-function concat(datas, dim)
-    if dim == -1 && !isaligned(datas)
-        h5 = randstring() * ".h5"
-        data, = pivot(datas, h5)
-        finalizer(data) do d
-            rm(h5, force = true)
-        end
-        return data
-    end
+function concat(datas; dims = -1)
     fvs = []
     for s in fieldnames(Data)
         xs = getfield.(datas, s)
         x1 = getfield(datas[1], s)
         if isa(x1, AbstractArray)
-            d1 = dim > 0 ? dim : (ndims(x1) + 1 + dim)
+            d1 = dims > 0 ? dims : (ndims(x1) + 1 + dims)
             bsizes = [d == d1 ? size.(xs, d) : [size(x1, d)] for d in 1:ndims(x1)]
             xsizes = [d == d1 ? (:) : 1 for d in 1:ndims(x1)]
             x = _BlockArray(reshape(xs, xsizes...), bsizes...)
@@ -423,7 +415,7 @@ Base.isempty(data::Data) = length(data) == 0
 
 Base.copy(data::Data) = to_struct(Data, to_dict(data))
 
-pivot(datas::AbstractArray{<:Data}, a...; ka...) = pivot(concat(map(vec, datas), -1), a...; ka...)
+pivot(datas::AbstractArray{<:Data}, a...; ka...) = pivot(concat(map(vec, datas)), a...; ka...)
 
 pivot(h5::String, a...; ka...) = pivot(loaddata(h5), a...; ka...)
 

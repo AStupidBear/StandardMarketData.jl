@@ -9,15 +9,15 @@ using SortingAlgorithms
 using Parameters
 using Mmap
 
-function part(x::AbstractArray{T, N}, dim = -1) where {T, N}
-    dim = dim > 0 ? dim : N + dim + 1
-    dsize = size(x, dim)
+function part(x::AbstractArray{T, N}; dims = -1) where {T, N}
+    dims = dims > 0 ? dims : N + dims + 1
+    dsize = size(x, dims)
     rank = MPI.Comm_rank(MPI.COMM_WORLD)
     wsize = MPI.Comm_size(MPI.COMM_WORLD)
     @assert wsize <= dsize
     chunk = ceil(Int, dsize / wsize)
     is = (rank * chunk + 1):min(dsize, (rank + 1) * chunk)  
-    view(x, ntuple(x -> x == dim ? is : (:), N)...)
+    view(x, ntuple(x -> x == dims ? is : (:), N)...)
 end
 
 function discretize!(x8, x)
