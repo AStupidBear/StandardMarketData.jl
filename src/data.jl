@@ -221,9 +221,15 @@ function print_header_stats(io, header, stats)
     end
 end
 
-_diff(x) = length(x) > 1 ? diff(x) : [zero(eltype(x))]
-
-period(data) = median(median(_diff(filter(!isna, data.时间戳[n, :]))) for n in 1:size(data, 1))
+function period(data)
+    Δts = Float32[]
+    for n in 1:size(data, 1)
+        ts = filter(!isna, data.时间戳[n, :])
+        length(ts) < 2 && continue
+        push!(Δts, median(diff(ts)))
+    end
+    isempty(Δts) ? 0f0 : median(Δts)
+end
 
 downsample(data::Data, freq::String; ka...) =
     downsample(data, round(Int, min(nticks(data), parsefreq(freq) / period(data))); ka...)
