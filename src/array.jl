@@ -53,8 +53,12 @@ rstack(xs) = stack(xs, 1)
 indbatch(x, b, offset = 0) = (C = ccount(x); min(i + offset, C):min(i + offset + b -1, C) for i in 1:b:C)
 minibatch(x, batchsize) = [cview(x, ind) for ind in indbatch(x, batchsize)]
 
-function Base.split(x::AbstractArray, n)
+function Base.split(x::AbstractArray, n::Integer)
     cview(x, 1:n), cview(x, (n + 1):ccount(x))
+end
+
+function Base.split(x::AbstractArray, is::AbstractArray{<:Integer})
+    [cview(x, i:i′) for (i, i′) in zip([0; is[1:end - 1]] .+ 1, is)]
 end
 
 colvec(x) = reshape(x, length(x), 1)
