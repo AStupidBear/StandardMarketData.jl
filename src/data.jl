@@ -336,7 +336,7 @@ function pct_change(v, h)
     N, T = size(v)
     chg = zeros(Float32, N, T)
     r = zeros(Float32, N)
-    for t in T:-1:(T - h + 1), n in 1:N
+    for t in T:-1:max(2, T - h + 1), n in 1:N
         r[n] += v[n, t]
         chg[n, t - 1] = r[n]
     end
