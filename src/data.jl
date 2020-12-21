@@ -73,7 +73,15 @@ Base.length(data::Data) = prod(size(data))
 
 Base.lastindex(data::Data, n) = size(data, n)
 
-ndays(data) = sortednunique(unix2date, filter(!iszero, data.时间戳[1, :]))
+function ndays(data)
+    Δts = Float32[]
+    timestamps = Array(data.时间戳)
+    for n in 1:size(data, 1)
+        ts = filter(!isna, timestamps[n, :])
+        !isempty(ts) && return sortednunique(unix2date, ts)
+    end
+    return 0
+end
 
 nticksperday(data) = nticks(data) ÷ ndays(data)
 
@@ -223,8 +231,9 @@ end
 
 function period(data)
     Δts = Float32[]
+    timestamps = Array(data.时间戳)
     for n in 1:size(data, 1)
-        ts = filter(!isna, data.时间戳[n, :])
+        ts = filter(!isna, timestamps[n, :])
         length(ts) < 2 && continue
         push!(Δts, median(diff(ts)))
     end
