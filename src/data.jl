@@ -259,7 +259,7 @@ function downsample(data::Data, ts::AbstractArray{Int}; average = false)
         end
     end
     if length(ts) == 1
-        copyto!(data′.涨幅, sum(data.涨幅, dims = 2))
+        copyto!(data′.涨幅, sum(Array(data.涨幅), dims = 2))
     end
     !average && return data′
     fill!(data′.特征, 0)
