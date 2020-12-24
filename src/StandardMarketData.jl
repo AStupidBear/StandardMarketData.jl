@@ -16,7 +16,7 @@ export discretize!, discretize, undiscretize, period, downsample, featnames
 export getfeat, getfeats, @uncol, dropfeats, keepfeats, getcats, keepcats
 export datespan, firstdate, lastdate, setcomm, setpool
 export epochsof, datetimesof, datesof, codesof, parsefreq
-export concat, pivot, rolldata, to_df, to_data, sourceof
+export concat, pivot, rolldata, to_df, to_data, sourceof, findsnap
 export unix2date, unix2time, unix2hour, unix2str8, unix2str6, unix2int
 export str2date, str2datetime, str2unix, int2unix
 export to_dict, to_struct, idxmap, pct_change
