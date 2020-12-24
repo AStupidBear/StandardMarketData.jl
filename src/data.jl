@@ -76,9 +76,9 @@ Base.lastindex(data::Data, n) = size(data, n)
 
 function ndays(data)
     Δts = Float32[]
-    timestamps = Array(data.时间戳)
+    stamps = Array(data.时间戳)
     for n in 1:size(data, 1)
-        ts = filter(!isna, timestamps[n, :])
+        ts = filter(!isna, stamps[n, :])
         !isempty(ts) && return sortednunique(unix2date, ts)
     end
     return 0
@@ -232,11 +232,13 @@ end
 
 function period(data)
     Δts = Float32[]
-    timestamps = Array(data.时间戳)
+    stamps = Array(data.时间戳)
     for n in 1:size(data, 1)
-        ts = filter(!isna, timestamps[n, :])
+        ts = filter(!isna, stamps[n, :])
+        Δt = median(diff(ts))
         length(ts) < 2 && continue
-        push!(Δts, median(diff(ts)))
+        2 * length(ts) > size(data, 2) && return Δt
+        push!(Δts, Δt)
     end
     isempty(Δts) ? 0f0 : median(Δts)
 end
@@ -339,7 +341,7 @@ lastdate(data::Data) = unix2date(maximum(t -> ifelse(isna(t), -Inf, t), data.时
 
 pct_change(data::Data, h::String) = pct_change(data, ceil(Int, min(nticks(data), parsefreq(h) / period(data))))
 
-pct_change(data::Data, h::Int) = pct_change(data.涨幅, h)
+pct_change(data::Data, h::Int) = pct_change(Array(data.涨幅), h)
 
 function pct_change(v, h)
     h = ceil(Int, h)
