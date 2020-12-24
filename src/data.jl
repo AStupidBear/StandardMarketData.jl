@@ -76,9 +76,8 @@ Base.lastindex(data::Data, n) = size(data, n)
 
 function ndays(data)
     Δts = Float32[]
-    stamps = Array(data.时间戳)
     for n in 1:size(data, 1)
-        ts = filter(!isna, stamps[n, :])
+        ts = filter(!isna, data.时间戳[n, :])
         !isempty(ts) && return sortednunique(unix2date, ts)
     end
     return 0
@@ -232,9 +231,8 @@ end
 
 function period(data)
     Δts = Float32[]
-    stamps = Array(data.时间戳)
     for n in 1:size(data, 1)
-        ts = filter(!isna, stamps[n, :])
+        ts = filter(!isna, data.时间戳[n, :])
         Δt = median(diff(ts))
         length(ts) < 2 && continue
         2 * length(ts) > size(data, 2) && return Δt
@@ -255,14 +253,15 @@ function downsample(data::Data, ts::AbstractArray{Int}; average = false)
     data′ = data[:, ts]
     F, N, T = size(data.特征)
     fill!(data′.涨幅, 0)
-    @showprogress 10 for t′ in 1:(length(ts) - 1)
+    涨幅 = Array(data.涨幅)
+    for t′ in 1:(length(ts) - 1)
         t⁻ = t′ == 1 ? 0 : ts[t′ - 1]
         @inbounds for t in (t⁻ + 1):ts[t′], n in 1:N
-            data′.涨幅[n, t′] += data.涨幅[n, t]
+            data′.涨幅[n, t′] += 涨幅[n, t]
         end
     end
     if length(ts) == 1
-        copyto!(data′.涨幅, sum(Array(data.涨幅), dims = 2))
+        copyto!(data′.涨幅, sum(涨幅, dims = 2))
     end
     !average && return data′
     fill!(data′.特征, 0)
@@ -627,14 +626,14 @@ function Mmap.sync!(data::Data)
 end
 
 function findsnap(data::Data, hsnap)
-    stamps = Array(data.时间戳)
+    stamps = data.时间戳
     for t in 1:size(stamps, 2)
-        h = 0.0
+        zmax = 0.0
         @inbounds @simd for n in 1:size(stamps, 1)
-            z = unix2hour(stamps[n, t])
-            h = ifelse(isna(z), h, max(h, z))
+            z = stamps[n, t]
+            zmax = ifelse(isna(z), zmax, max(zmax, z))
         end
-        h > hsnap && return max(1, t - 1)
+        unix2hour(zmax) > hsnap && return max(1, t - 1)
     end
     return size(stamps, 2)
 end
