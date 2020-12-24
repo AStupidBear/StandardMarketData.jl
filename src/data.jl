@@ -627,14 +627,14 @@ function Mmap.sync!(data::Data)
 end
 
 function findsnap(data::Data, hsnap)
-    stamp = Array(data.涨幅)
-    for t in 1:size(stamp, 2)
+    stamps = Array(data.涨幅)
+    for t in 1:size(stamps, 2)
         h = 0.0
-        @inbounds @simd for n in 1:size(stamp, 1)
-            z = unix2hour(stamp[n, t])
+        @inbounds @simd for n in 1:size(stamps, 1)
+            z = unix2hour(stamps[n, t])
             h = ifelse(isna(z), h, max(h, z))
         end
         h > hsnap && return max(1, t - 1)
     end
-    return size(stamp, 2)
+    return size(stamps, 2)
 end
