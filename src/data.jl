@@ -233,8 +233,8 @@ function period(data)
     Δts = Float32[]
     for n in 1:size(data, 1)
         ts = filter(!isna, data.时间戳[n, :])
-        Δt = median(diff(ts))
         length(ts) < 2 && continue
+        Δt = median(diff(ts))
         2 * length(ts) > size(data, 2) && return Δt
         push!(Δts, Δt)
     end
