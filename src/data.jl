@@ -627,7 +627,7 @@ function Mmap.sync!(data::Data)
 end
 
 function findsnap(data::Data, hsnap)
-    stamps = Array(data.涨幅)
+    stamps = Array(data.时间戳)
     for t in 1:size(stamps, 2)
         h = 0.0
         @inbounds @simd for n in 1:size(stamps, 1)
