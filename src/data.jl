@@ -1,4 +1,5 @@
 mutable struct Data{
+    S <: AbstractString,
     A <: AbstractArray{T, 3} where T, 
     B <: AbstractMatrix, C <: AbstractMatrix, 
     D <: AbstractMatrix, E <: AbstractMatrix, 
@@ -6,7 +7,7 @@ mutable struct Data{
     H <: AbstractMatrix, I <: AbstractMatrix, 
     J <: AbstractMatrix, K <: AbstractMatrix
     }
-    特征名::Dict{String, Int}
+    特征名::Dict{S, Int}
     特征::A
     涨幅::B
     时间戳::C
