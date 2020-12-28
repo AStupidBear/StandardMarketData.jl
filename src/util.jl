@@ -25,10 +25,10 @@ unix2date(t) = Date(unix2datetime(t))
 unix2time(t) = Time(unix2datetime(t))
 unix2hour(x) = x % (24 * 3600) / 3600
 
-unix2str8(t) = Dates.format(unix2datetime(t), "yyyymmdd")
-unix2str6(t) = Dates.format(unix2datetime(t), "yymmdd")
-str2date(str) = Date(replace(str, '-' => ""), "yyyymmdd")
-str2datetime(str) = DateTime(replace(str, '-' => ""), "yyyymmdd")
+unix2str8(t) = Dates.format(unix2datetime(t), dateformat"yyyymmdd")
+unix2str6(t) = Dates.format(unix2datetime(t), dateformat"yymmdd")
+str2date(str) = Date(replace(str, '-' => ""), dateformat"yyyymmdd")
+str2datetime(str) = DateTime(replace(str, '-' => ""), dateformat"yyyymmdd")
 str2unix(str) = datetime2unix(str2datetime(str))
 
 unix2int(t) = parse(Int, unix2str8(t))

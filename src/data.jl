@@ -187,7 +187,7 @@ function Base.show(io::IO, data::Data)
     @printf(io, "交易池比例: %.2g\t", mean(data.交易池))
     @printf(io, "涨停比例: %.2g\t", mean(data.涨停))
     @printf(io, "跌停比例: %.2g\n", mean(data.跌停))
-    @printf(io, "日期范围: %s/%s\t", Dates.format.(datespan(data), "yymmdd")...)
+    @printf(io, "日期范围: %s/%s\t", Dates.format.(datespan(data), dateformat"yymmdd")...)
     @printf(io, "价格范围: %.3g/%.3g\n", extrema(filter(!isna, data.最新价))...)
     @printf(io, "涨幅范围: %.2g/%.2g\n", extrema(data.涨幅)...)
     compact && return
