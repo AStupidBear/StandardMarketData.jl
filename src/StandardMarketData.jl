@@ -22,6 +22,7 @@ export str2date, str2datetime, str2unix, int2unix
 export to_dict, to_struct, idxmap, pct_change
 export to_category, from_category
 export sortedunique, sortednunique, nunique
+export fillnan, fillnan!
 export extract_talib_feats, extract_tsfresh_feats
 export SMD, ⧶, @staticvar, @staticdef
 

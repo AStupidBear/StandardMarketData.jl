@@ -231,3 +231,7 @@ function arr2rng(x)
 end
 
 isna(x) = iszero(x) | isnan(x)
+
+fillnan(x) = ifelse(isnan(x), zero(x), x)
+
+fillnan!(x) = map!(fillnan, x, x)
