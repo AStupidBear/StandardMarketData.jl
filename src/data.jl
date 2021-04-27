@@ -637,3 +637,10 @@ function findsnap(data::Data, hsnap)
     end
     return size(stamps, 2)
 end
+
+function splitday(data::Data)
+    unix = vec(maximum(fillnan, data.时间戳, dims = 1))
+    is = findall(diff(unix .÷ 86400) .>= 1)
+    rs = UnitRange.([1; is .+ 1], [is; length(unix)])
+    return [view(data, :, r) for r in rs]
+end
