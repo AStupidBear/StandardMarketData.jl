@@ -135,10 +135,11 @@ function loaddata(pattern, a...; ka...)
     else
         srcs = []
     end
-    if isempty(srcs)
-        root = joinpath(get(ENV, "JOB", ""), "data")
-        srcs = glob(pattern, root)
+    if isempty(srcs) && !startswith(pattern, "/")
+        job = get(ENV, "JOB", expanduser("~/job"))
+        srcs = glob(pattern, joinpath(job, "data"))
     end
+    isempty(srcs) && error(pattern * " not found")
     loaddata(srcs, a...; ka...)
 end
 
