@@ -127,7 +127,11 @@ function loaddata(pattern, a...; ka...)
     if isfile(pattern)
         srcs = [pattern]
     else
-        srcs = glob(pattern)
+        if startswith(pattern, "/")
+            srcs = glob(pattern[2:end], "/")
+        else
+            srcs = glob(pattern)       
+        end
     end
     if isempty(srcs)
         root = joinpath(get(ENV, "JOB", ""), "data")
