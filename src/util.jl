@@ -201,11 +201,11 @@ idxmap(x) = Dict(zip(x, axes(x, 1)))
 ⧶(x, y::AbstractFloat) = x / (y + eps(y))
 ⧶(x, y::Integer) = ifelse(x == y == 0, zero(x), x / y)
 
-function from_category(sr)
+function from_category(sr, T = MLString{8})
     sr = sr.astype("category")
     cats = Array(sr.cat.categories)
     codes = (sr.cat.codes + 1).values
-    MLString{8}[cats[i] for i in codes]
+    T[cats[i] for i in codes]
 end
 
 function to_category(x)

@@ -44,7 +44,7 @@ for f in [:getindex, :view]
     end
 
     @eval function Base.$f(data::Data, code::String)
-        code = MLString{8}(code)
+        code = eltype(data.代码)(code)
         mask = data.代码 .== code
         ns = findall(vec(any(mask, dims = 2)))
         ts = findall(vec(any(mask, dims = 1)))
@@ -590,7 +590,8 @@ function _to_data(df, dst; ncode = 0)
             if c == "时间戳" && df[c].dtype.kind == "M"
                 x = df[c].astype("int").div(1e9).values
             elseif c == "代码"
-                x = from_category(df[c])
+                n = cld(df["代码"].str.len().max(), 8) * 8
+                x = from_category(df[c], MLString{n})
             else
                 x = df[c].values
             end
