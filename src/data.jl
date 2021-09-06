@@ -115,9 +115,9 @@ function _loaddata(src; fload = nothing, ti = nothing, tf = nothing, ka...)
     end
 end
 
-function loaddata(srcs::AbstractArray; dims = -1, ka...)
+function loaddata(srcs::AbstractArray, a...; dims = -1, ka...)
     datas = @showprogress 10 "loaddata..." map(srcs) do src
-        _loaddata(src; ka...)
+        _loaddata(src, a...; ka...)
     end
     length(srcs) == 1 && return datas[1]
     concat(filter(!isempty, datas); dims)
