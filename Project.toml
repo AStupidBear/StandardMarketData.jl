@@ -42,7 +42,7 @@ Parameters = "0.12"
 ProgressMeter = "1"
 PyCall = "1.90"
 PyCallUtils = "0.2"
-SortingAlgorithms = "0.3"
+SortingAlgorithms = "0.3, 1"
 StatsBase = "0.32, 0.33"
 julia = "1"
 
