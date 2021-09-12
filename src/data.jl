@@ -196,7 +196,7 @@ function Base.show(io::IO, data::Data)
     @printf(io, "跌停比例: %.2g\n", mean(data.跌停))
     @printf(io, "日期范围: %s/%s\t", Dates.format.(datespan(data), dateformat"yymmdd")...)
     @printf(io, "价格范围: %.3g/%.3g\n", extrema(filter(!isna, data.最新价))...)
-    @printf(io, "涨幅范围: %.2g/%.2g\n", extrema(data.涨幅)...)
+    @printf(io, "涨幅范围: %.2g/%.2g\n", extrema(filter(!isna, data.涨幅))...)
     compact && return
     header, stats = String[], Array{String}[]
     for f in ("涨幅", "手续费率")
