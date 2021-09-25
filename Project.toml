@@ -1,7 +1,7 @@
 name = "StandardMarketData"
 uuid = "7a408522-0ffe-11ea-0d13-d3c3bdffbeb4"
 authors = ["Yao Lu <luyaocns@gmail.com>"]
-version = "0.1.13"
+version = "0.1.14"
 
 [deps]
 ArgParse = "c7e460c6-2fb9-53a9-8c5b-16f535851c63"

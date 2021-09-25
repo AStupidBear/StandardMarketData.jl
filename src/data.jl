@@ -588,7 +588,7 @@ function _to_data(df, dst; ncode = 0)
     h5open(dst, "r+") do fid
         @showprogress 10 "to_data.meta..." for c in metacols(df)
             if c == "时间戳" && df[c].dtype.kind == "M"
-                x = df[c].astype("int").div(1e9).values
+                x = df[c].view("int64").div(1e9).values
             elseif c == "代码"
                 n = cld(df["代码"].str.len().max(), 8) * 8
                 x = from_category(df[c], MLString{n})
