@@ -435,7 +435,7 @@ function concat(datas; dims = -1)
     return Data(fvs...)
 end
 
-Base.isempty(data::Data) = length(data) == 0
+Base.isempty(data::Data) = length(data) == 0 || all(isna, data.时间戳)
 
 Base.copy(data::Data) = to_struct(Data, to_dict(data))
 
