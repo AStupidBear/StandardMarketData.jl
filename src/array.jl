@@ -16,7 +16,9 @@ end
 subslice(x) = ntuple(i -> (:), ndims(x) - 1)
 
 cview(a, i) = view(a, subslice(a)..., i)
+cview(as::Tuple, i) = map(a -> cview(a, i), as)
 rview(a, i) = view(a, i, subslice(a)...)
+rview(as::Tuple, i) = map(a -> rview(a, i), as)
 cget(a, i) = getindex(a, subslice(a)..., i)
 rget(a, i) = getindex(a, i, subslice(a)...)
 cset!(a, x, i) = setindex!(a, x, subslice(a)..., i)
