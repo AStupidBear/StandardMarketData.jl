@@ -1,26 +1,3 @@
-macro staticvar(init)
-    var = gensym()
-    __module__.eval(:(const $var = $init))
-    var = esc(var)
-    quote
-        global $var
-        $var
-    end
-end
-
-macro staticdef(ex)
-    @capture(ex, name_::T_ = val_) || error("invalid @staticvar")
-    ref = Ref{__module__.eval(T)}()
-    set = Ref(false)
-    :($(esc(name)) = if $set[]
-        $ref[]
-    else
-        $ref[] = $(esc(ex))
-        $set[] = true
-        $ref[]
-    end)
-end
-
 unix2date(t) = Date(unix2datetime(t))
 unix2time(t) = Time(unix2datetime(t))
 unix2hour(x) = x % (24 * 3600) / 3600

@@ -24,7 +24,7 @@ export to_category, from_category
 export sortedunique, sortednunique, nunique
 export fillnan, fillnan!
 export extract_talib_feats, extract_tsfresh_feats
-export SMD, ⧶, @staticvar, @staticdef
+export SMD, ⧶
 
 export creshape, rreshape, csize, rsize, ccount, rcount
 export cview, rview, cget, rget, cset!, rset!
